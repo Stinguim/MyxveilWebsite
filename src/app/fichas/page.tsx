@@ -46,6 +46,11 @@ export default async function FichasPage({
 
   if (estado) {
     query = query.eq("estado", estado);
+  } else {
+    // Sem filtro de estado explícito, fichas arquivadas ficam escondidas
+    // por defeito — "personagem morto" não deve poluir a listagem geral;
+    // só aparecem quando alguém escolhe "Arquivada" no filtro de estado.
+    query = query.neq("estado", "arquivada");
   }
 
   if (dono === "minhas") {

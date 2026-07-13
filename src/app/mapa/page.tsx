@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { GrafoRelacoes, type PersonagemDoGrafo } from "@/components/mapa/grafo-relacoes";
+import type { NodePosition } from "@/lib/relations/node-positions-actions";
 import type { CharacterRelation, Group } from "@/lib/relations/types";
 
 /**
@@ -18,22 +19,29 @@ export default function MapaPage() {
   const [personagens, setPersonagens] = useState<PersonagemDoGrafo[]>([]);
   const [grupos, setGrupos] = useState<Group[]>([]);
   const [relacoes, setRelacoes] = useState<CharacterRelation[]>([]);
+  const [posicoes, setPosicoes] = useState<NodePosition[]>([]);
   const [carregando, setCarregando] = useState(true);
 
   useEffect(() => {
     const supabase = createClient();
 
     async function carregar() {
-      const [{ data: characters }, { data: gruposData }, { data: relacoesData }] =
-        await Promise.all([
-          supabase.from("characters").select("id, nome"),
-          supabase.from("groups").select("*"),
-          supabase.from("character_relations").select("*"),
-        ]);
+      const [
+        { data: characters },
+        { data: gruposData },
+        { data: relacoesData },
+        { data: posicoesData },
+      ] = await Promise.all([
+        supabase.from("characters").select("id, nome"),
+        supabase.from("groups").select("*"),
+        supabase.from("character_relations").select("*"),
+        supabase.from("node_positions").select("*"),
+      ]);
 
       setPersonagens((characters ?? []) as PersonagemDoGrafo[]);
       setGrupos((gruposData ?? []) as Group[]);
       setRelacoes((relacoesData ?? []) as CharacterRelation[]);
+      setPosicoes((posicoesData ?? []) as NodePosition[]);
       setCarregando(false);
     }
 
@@ -55,6 +63,7 @@ export default function MapaPage() {
           personagens={personagens}
           grupos={grupos}
           relacoes={relacoes}
+          posicoesGuardadas={posicoes}
           onClickPersonagem={(id) => router.push(`/fichas/${id}`)}
         />
       )}

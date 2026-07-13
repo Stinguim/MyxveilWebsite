@@ -3,24 +3,31 @@
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentUser } from "@/lib/auth/current-user";
 import { revalidatePath } from "next/cache";
+import type { MidiaInspirada } from "@/lib/characters/types";
 
 const BUCKET = "character-art";
 const TAMANHO_MAXIMO_BYTES = 5 * 1024 * 1024; // 5MB
 const TIPOS_PERMITIDOS = ["image/png", "image/jpeg", "image/webp"];
 
-type ActionResult = { error: string } | { success: true; retrato_path: string };
+type ActionResult =
+  | { error: string }
+  | { success: true; item: MidiaInspirada };
 
 /**
- * Upload do retrato da personagem. Reaproveita o bucket "character-art"
- * (migration 0005), na mesma convenção de path {owner_id}/{character_id}/
- * {filename} — as policies de storage já existentes (baseadas na pasta)
- * cobrem esta escrita sem precisar de nada novo.
+ * Upload de uma imagem para a mini-galeria de "mídia inspirada"
+ * (moodboard/referências) de uma ficha. Reaproveita o bucket
+ * 'character-art' (migration 0005) já existente, numa subpasta própria
+ * "inspiracao/" para não colidir com o retrato nem com character_art —
+ * as policies de storage já em vigor (baseadas em
+ * (storage.foldername(name))[1] = owner_id) cobrem qualquer subpasta
+ * dentro de {owner_id}/{character_id}/..., por isso não precisa de
+ * policy nova.
  *
- * upsert: true porque um retrato é substituível (path fixo por ficha:
- * "retrato" + extensão), ao contrário da galeria de arte onde cada
- * upload é uma entrada nova.
+ * Ao contrário do retrato (upsert num path fixo), aqui cada upload é uma
+ * entrada nova na galeria — por isso o nome do ficheiro inclui um
+ * timestamp para nunca colidir.
  */
-export async function atualizarRetrato(
+export async function adicionarMidiaInspirada(
   characterId: string,
   formData: FormData
 ): Promise<ActionResult> {
@@ -29,9 +36,9 @@ export async function atualizarRetrato(
     return { error: "Sessão expirada. Inicia sessão novamente." };
   }
 
-  const file = formData.get("retrato");
+  const file = formData.get("imagem");
   if (!(file instanceof File) || file.size === 0) {
-    return { error: "Escolhe uma imagem para o retrato." };
+    return { error: "Escolhe uma imagem." };
   }
   if (!TIPOS_PERMITIDOS.includes(file.type)) {
     return { error: "Formato não suportado. Usa PNG, JPEG ou WebP." };
@@ -40,13 +47,15 @@ export async function atualizarRetrato(
     return { error: "A imagem tem de ter menos de 5MB." };
   }
 
+  const legenda = String(formData.get("legenda") ?? "").trim() || null;
+
   const supabase = await createClient();
 
-  // Confirma que a ficha existe e o utilizador tem permissão de a editar
-  // ANTES de gastar upload — a policy de storage usa (storage.foldername
-  // (name))[1] = auth.uid()::text, por isso o path tem de começar pelo
-  // owner_id real da ficha, não pelo utilizador atual (que pode ser o
-  // CRIADOR a editar a ficha de outro).
+  // Confirma que a ficha existe e que o utilizador tem permissão de a
+  // editar ANTES de gastar upload — o path tem de começar pelo owner_id
+  // real da ficha (não o do utilizador atual, que pode ser o CRIADOR a
+  // editar a ficha de outro jogador), porque é isso que a policy de
+  // storage exige.
   const { data: character, error: fetchError } = await supabase
     .from("characters")
     .select("id, owner_id")
@@ -63,27 +72,27 @@ export async function atualizarRetrato(
     return { error: "Não tens permissão para editar esta ficha." };
   }
 
-  // Nota: se for o CRIADOR a editar a ficha de outro jogador, o path usa
-  // o owner_id do DONO (não o do CRIADOR), porque é isso que a policy de
-  // storage exige. O CRIADOR só consegue este upload se a policy de
-  // storage também tiver a cláusula is_criador() (já tem, ver 0005).
   const extensao = file.name.split(".").pop() || "png";
-  const path = `${character.owner_id}/${characterId}/retrato-${Date.now()}.${extensao}`;
+  const path = `${character.owner_id}/${characterId}/inspiracao/${Date.now()}.${extensao}`;
 
   const { error: uploadError } = await supabase.storage
     .from(BUCKET)
-    .upload(path, file, { upsert: true });
+    .upload(path, file);
 
   if (uploadError) {
     return { error: "Não foi possível enviar a imagem: " + uploadError.message };
   }
 
   const { data, error } = await supabase
-    .from("characters")
-    .update({ retrato_path: path })
-    .eq("id", characterId)
-    .select("id")
-    .maybeSingle();
+    .from("character_midia_inspirada")
+    .insert({
+      character_id: characterId,
+      uploaded_by: current.user.id,
+      storage_path: path,
+      legenda,
+    })
+    .select("*")
+    .maybeSingle<MidiaInspirada>();
 
   if (error) {
     return { error: "Imagem enviada, mas não foi possível associá-la à ficha." };
@@ -94,11 +103,11 @@ export async function atualizarRetrato(
 
   revalidatePath(`/fichas/${characterId}`);
   revalidatePath(`/fichas/${characterId}/jogar`);
-  revalidatePath("/fichas");
-  return { success: true, retrato_path: path };
+  return { success: true, item: data };
 }
 
-export async function removerRetrato(
+export async function removerMidiaInspirada(
+  itemId: string,
   characterId: string
 ): Promise<{ error?: string }> {
   const current = await getCurrentUser();
@@ -107,26 +116,27 @@ export async function removerRetrato(
   }
 
   const supabase = await createClient();
+
+  // Apaga primeiro o registo (a RLS garante permissão); o ficheiro em si
+  // no bucket fica órfão se a remoção da linha for bem-sucedida — mesma
+  // limitação já documentada para o retrato (sem UI de limpeza ainda).
   const { data, error } = await supabase
-    .from("characters")
-    .update({ retrato_path: null })
-    .eq("id", characterId)
-    .select("id")
+    .from("character_midia_inspirada")
+    .delete()
+    .eq("id", itemId)
+    .select("storage_path")
     .maybeSingle();
 
   if (error) {
-    return { error: "Não foi possível remover o retrato." };
+    return { error: "Não foi possível remover a imagem." };
   }
   if (!data) {
-    return { error: "Não tens permissão para editar esta ficha." };
+    return { error: "Não tens permissão para remover esta imagem." };
   }
 
-  // Nota: o ficheiro em si fica no bucket (órfão) — sem UI de galeria
-  // ainda não há um sítio óbvio para gerir limpeza de ficheiros não
-  // referenciados. Aceitável por agora (bucket já é público/gratuito
-  // dentro do plano); revisitar se isto começar a pesar no Storage.
+  await supabase.storage.from(BUCKET).remove([data.storage_path]);
+
   revalidatePath(`/fichas/${characterId}`);
   revalidatePath(`/fichas/${characterId}/jogar`);
-  revalidatePath("/fichas");
   return {};
 }

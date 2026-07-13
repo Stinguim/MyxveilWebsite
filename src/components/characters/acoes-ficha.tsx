@@ -48,7 +48,13 @@ export function AcoesFicha({ character, isDono, isCriador }: Props) {
 
   return (
     <div className="flex flex-wrap items-center gap-2">
-      {isDono && character.estado === "rascunho" && (
+      {/*
+        Fichas criadas pelo próprio CRIADOR nascem já em 'aprovada'
+        (auto-aprovação, ver criarFicha) — não faz sentido o CRIADOR
+        submeter a si próprio uma ficha para aprovação, por isso este
+        botão só aparece para jogadores.
+      */}
+      {isDono && !isCriador && character.estado === "rascunho" && (
         <button
           type="button"
           disabled={isPending}

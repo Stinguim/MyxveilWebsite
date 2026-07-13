@@ -30,6 +30,7 @@ type ActionResult = { error: string } | { success: true; id: string };
 type ParsedCharacterFields = {
   nome: string;
   idade: number | null;
+  altura: string | null;
   genero: Genero | null;
   genero_outro: string | null;
   especie: Especie | null;
@@ -49,6 +50,7 @@ type ParsedCharacterFields = {
   grupo: Grupo | null;
   grupo_outro: string | null;
   lore_adicional: string | null;
+  midia_inspirada_texto: string | null;
   atributo_for: number;
   atributo_int: number;
   atributo_des: number;
@@ -102,6 +104,7 @@ function parseCharacterForm(
   return {
     nome,
     idade,
+    altura: String(formData.get("altura") ?? "").trim() || null,
     genero: readEnum<Genero>("genero"),
     genero_outro: String(formData.get("genero_outro") ?? "").trim() || null,
     especie: readEnum<Especie>("especie"),
@@ -129,6 +132,8 @@ function parseCharacterForm(
     grupo: readEnum<Grupo>("grupo"),
     grupo_outro: String(formData.get("grupo_outro") ?? "").trim() || null,
     lore_adicional: String(formData.get("lore_adicional") ?? "").trim() || null,
+    midia_inspirada_texto:
+      String(formData.get("midia_inspirada_texto") ?? "").trim() || null,
 
     atributo_for: readAtributo("atributo_for"),
     atributo_int: readAtributo("atributo_int"),
@@ -164,10 +169,22 @@ export async function criarFicha(formData: FormData): Promise<ActionResult> {
   const parsed = parseCharacterForm(formData);
   if ("error" in parsed) return parsed;
 
+  // Auto-aprovação para o CRIADOR: fichas criadas pelo próprio DM nascem
+  // já em 'aprovada', sem passar por rascunho/submetida — não faz
+  // sentido o CRIADOR submeter uma ficha a si próprio para aprovação. A
+  // RLS ("characters_update") já permite estado='aprovada' quando
+  // is_criador() é verdadeiro, por isso isto é seguro mesmo se alguém
+  // tentasse forçar o campo via um pedido manual.
+  const isCriador = current.profile.role === "criador";
+
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("characters")
-    .insert({ ...parsed, owner_id: current.user.id })
+    .insert({
+      ...parsed,
+      owner_id: current.user.id,
+      ...(isCriador ? { estado: "aprovada" as const } : {}),
+    })
     .select("id")
     .single();
 
@@ -341,6 +358,11 @@ export async function apagarFicha(
  * ficha em rascunho, pertencente ao utilizador atual, com "(cópia)" no
  * nome. Útil para NPCs parecidos ou adaptar um personagem a nova
  * campanha.
+ *
+ * Nota: mesmo que quem duplique seja o CRIADOR, a cópia nasce em
+ * 'rascunho' propositadamente — só a criação original via formulário
+ * aplica a auto-aprovação, para não haver aprovações "invisíveis" em
+ * massa ao duplicar fichas de outros jogadores.
  */
 export async function duplicarFicha(original: Character): Promise<ActionResult> {
   const current = await getCurrentUser();
@@ -351,6 +373,7 @@ export async function duplicarFicha(original: Character): Promise<ActionResult> 
   const copiavel = {
     nome: `${original.nome} (cópia)`,
     idade: original.idade,
+    altura: original.altura,
     genero: original.genero,
     genero_outro: original.genero_outro,
     especie: original.especie,
@@ -370,6 +393,7 @@ export async function duplicarFicha(original: Character): Promise<ActionResult> 
     grupo: original.grupo,
     grupo_outro: original.grupo_outro,
     lore_adicional: original.lore_adicional,
+    midia_inspirada_texto: original.midia_inspirada_texto,
     atributo_for: original.atributo_for,
     atributo_int: original.atributo_int,
     atributo_des: original.atributo_des,

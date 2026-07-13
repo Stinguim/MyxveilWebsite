@@ -4,7 +4,7 @@ import { useCallback, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { atualizarFicha, criarFicha } from "@/lib/characters/actions";
 import { useDebouncedEffect } from "@/lib/use-debounced-effect";
-import type { Character } from "@/lib/characters/types";
+import type { Character, MidiaInspirada as MidiaInspiradaItem } from "@/lib/characters/types";
 import { ATRIBUTOS_KEYS, nivelDominioMaisAlto } from "@/lib/characters/types";
 import { AtributosEditor } from "@/components/characters/atributos-editor";
 import {
@@ -28,6 +28,7 @@ import {
   ORIGEM_OPCOES,
 } from "@/components/characters/opcoes";
 import { FichaPreview } from "@/components/characters/ficha-preview";
+import { MidiaInspirada } from "@/components/characters/midia-inspirada";
 import { SubmitButton } from "@/components/submit-button";
 
 type Props = {
@@ -42,6 +43,8 @@ type Props = {
   podeEditar?: boolean;
   /** URL pública do retrato, ou null se não tiver. Passada ao FichaPreview. */
   retratoUrl?: string | null;
+  /** Itens da mini-galeria de mídia inspirada, já com URL pública. */
+  midiaInspiradaItens?: (MidiaInspiradaItem & { url: string })[];
 };
 
 const nivelOpcoesLabeled: [string, string][] = NIVEL_OPCOES.map((n) => [
@@ -49,7 +52,12 @@ const nivelOpcoesLabeled: [string, string][] = NIVEL_OPCOES.map((n) => [
   NIVEL_DOMINIO_LABELS[n],
 ]);
 
-export function FormFicha({ character, podeEditar = true, retratoUrl = null }: Props) {
+export function FormFicha({
+  character,
+  podeEditar = true,
+  retratoUrl = null,
+  midiaInspiradaItens = [],
+}: Props) {
   const isEdicao = Boolean(character);
   const [modoPreview, setModoPreview] = useState(!podeEditar && isEdicao);
   const [autoSaveStatus, setAutoSaveStatus] = useState<AutoSaveStatus>("idle");
@@ -84,9 +92,29 @@ export function FormFicha({ character, podeEditar = true, retratoUrl = null }: P
 
   const formRef = useRef<HTMLFormElement>(null);
 
+  /**
+   * Constrói o FormData a partir do DOM, mas sobrepõe os valores de
+   * atributos com o React state (`atributos`), nunca com o que estiver
+   * no DOM nesse instante.
+   *
+   * Corrige um bug em que o HP máximo (hp_total, coluna gerada a partir
+   * de atributo_con) "re-rolava"/mudava sozinho ao guardar: os sliders
+   * de atributo disparam onChange (atualiza o state) e onMouseUp/
+   * onTouchEnd (dispara o auto-save via onCommit) muito próximos um do
+   * outro, no mesmo gesto de largar o rato. O auto-save lia o FormData
+   * diretamente do DOM, e nalguns casos isso acontecia antes de o React
+   * terminar de sincronizar o `value` do input com o novo state,
+   * capturando o valor ANTERIOR do slider. Como os inputs de atributo
+   * são controlados (value={valores[key]}), a fonte da verdade correta
+   * é sempre `atributos` (o state) — nunca o DOM.
+   */
   const buildFormData = useCallback((): FormData => {
-    return new FormData(formRef.current!);
-  }, []);
+    const fd = new FormData(formRef.current!);
+    for (const key of ATRIBUTOS_KEYS) {
+      fd.set(key, String(atributos[key]));
+    }
+    return fd;
+  }, [atributos]);
 
   // Auto-save (QoL): dispara ~1.2s depois da última alteração a um select
   // (género, espécie, etc). Os sliders de atributos e os selects de nível
@@ -137,6 +165,12 @@ export function FormFicha({ character, podeEditar = true, retratoUrl = null }: P
 
   function handleCriar(formData: FormData) {
     setErrorCriar(null);
+    // Mesma proteção que buildFormData(): garante que os atributos
+    // enviados na criação são sempre os do state, não os que possam
+    // estar desatualizados no DOM no instante do submit.
+    for (const key of ATRIBUTOS_KEYS) {
+      formData.set(key, String(atributos[key]));
+    }
     startTransition(async () => {
       const result = await criarFicha(formData);
       if (result && "error" in result) {
@@ -199,6 +233,9 @@ export function FormFicha({ character, podeEditar = true, retratoUrl = null }: P
         </Campo>
         <Campo label="Idade" hint="Recomendado entre 18 e 60, mas não obrigatório.">
           <CampoTexto name="idade" type="number" defaultValue={character?.idade} />
+        </Campo>
+        <Campo label="Altura" hint="Texto livre — ex: 1,80m, cerca de 6 pés.">
+          <CampoTexto name="altura" defaultValue={character?.altura} />
         </Campo>
         <Campo label="Género">
           <CampoSelect
@@ -325,7 +362,27 @@ export function FormFicha({ character, podeEditar = true, retratoUrl = null }: P
             rows={5}
           />
         </Campo>
+        <Campo
+          label="Mídia inspirada (texto/links)"
+          hint="Referências soltas: links de Pinterest, atores/personagens parecidos, playlists, etc. Para imagens, usa a galeria abaixo (só disponível depois de guardares a ficha)."
+        >
+          <CampoTextarea
+            name="midia_inspirada_texto"
+            defaultValue={character?.midia_inspirada_texto}
+            rows={4}
+          />
+        </Campo>
       </div>
+
+      {isEdicao && character && (
+        <div>
+          <MidiaInspirada
+            characterId={character.id}
+            itens={midiaInspiradaItens}
+            podeEditar={podeEditar}
+          />
+        </div>
+      )}
 
       <h2 className="text-lg font-medium">Atributos e classes</h2>
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2" onBlur={handleFieldBlur}>

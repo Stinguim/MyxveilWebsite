@@ -17,6 +17,7 @@ import {
 import { RetratoPersonagem } from "@/components/characters/retrato-personagem";
 import { UploadRetrato } from "@/components/characters/upload-retrato";
 import { ModoSessao } from "@/components/characters/modo-sessao";
+import { RoladorDados } from "@/components/characters/rolador-dados";
 
 function outroOu<T extends string>(
   labels: Record<T, string>,
@@ -141,6 +142,20 @@ export default async function FichaJogarPage({
           character={character}
           recursos={(recursos ?? []) as Recurso[]}
           podeEditar={isDono || isCriador}
+        />
+      </div>
+
+      {/* Rolador de dados: testes de atributo com d20 (+ vantagem opcional) */}
+      <div className="mb-8">
+        <RoladorDados
+          atributos={{
+            atributo_for: character.atributo_for,
+            atributo_int: character.atributo_int,
+            atributo_des: character.atributo_des,
+            atributo_car: character.atributo_car,
+            atributo_con: character.atributo_con,
+            atributo_sp: character.atributo_sp,
+          }}
         />
       </div>
 

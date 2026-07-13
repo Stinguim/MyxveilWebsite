@@ -2,8 +2,9 @@ import { notFound, redirect } from "next/navigation";
 import Link from "next/link";
 import { getCurrentUser } from "@/lib/auth/current-user";
 import { createClient } from "@/lib/supabase/server";
-import type { Character } from "@/lib/characters/types";
+import type { Character, MidiaInspirada } from "@/lib/characters/types";
 import { urlRetrato } from "@/lib/characters/retrato-url";
+import { comUrlsMidiaInspirada } from "@/lib/characters/midia-inspirada-url";
 import { FormFicha } from "@/components/characters/form-ficha";
 import { AcoesFicha } from "@/components/characters/acoes-ficha";
 import { ToggleVisibilidade } from "@/components/characters/toggle-visibilidade";
@@ -41,7 +42,16 @@ export default async function FichaPage({
   const isCriador = current.profile.role === "criador";
   const podeEditar = isDono || isCriador;
 
-  const retratoUrl = await urlRetrato(character.retrato_path);
+  const { data: midiaInspiradaData } = await supabase
+    .from("character_midia_inspirada")
+    .select("*")
+    .eq("character_id", character.id)
+    .order("ordem", { ascending: true });
+
+  const [retratoUrl, midiaInspiradaItens] = await Promise.all([
+    urlRetrato(character.retrato_path),
+    comUrlsMidiaInspirada((midiaInspiradaData ?? []) as MidiaInspirada[]),
+  ]);
 
   return (
     <main className="mx-auto w-full max-w-2xl px-6 py-16">
@@ -77,7 +87,12 @@ export default async function FichaPage({
         )}
       </div>
 
-      <FormFicha character={character} podeEditar={podeEditar} retratoUrl={retratoUrl} />
+      <FormFicha
+        character={character}
+        podeEditar={podeEditar}
+        retratoUrl={retratoUrl}
+        midiaInspiradaItens={midiaInspiradaItens}
+      />
     </main>
   );
 }

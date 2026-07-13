@@ -45,6 +45,7 @@ export type Character = {
 
   nome: string;
   idade: number | null;
+  altura: string | null;
   genero: Genero | null;
   genero_outro: string | null;
   especie: Especie | null;
@@ -65,6 +66,7 @@ export type Character = {
   grupo: Grupo | null;
   grupo_outro: string | null;
   lore_adicional: string | null;
+  midia_inspirada_texto: string | null;
 
   atributo_for: number;
   atributo_int: number;
@@ -102,6 +104,17 @@ export type Character = {
 export type CharacterWithOwner = Character & {
   owner_nome_alcunha: string | null;
   owner_discord_username: string | null;
+};
+
+/** Item da mini-galeria de "mídia inspirada" (character_midia_inspirada). */
+export type MidiaInspirada = {
+  id: string;
+  character_id: string;
+  uploaded_by: string;
+  storage_path: string;
+  legenda: string | null;
+  ordem: number;
+  created_at: string;
 };
 
 /**

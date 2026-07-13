@@ -84,6 +84,7 @@ export function FichaPreview({
 
       <section className="grid grid-cols-1 gap-x-6 sm:grid-cols-2">
         <Linha label="Idade" value={character.idade} />
+        <Linha label="Altura" value={character.altura} />
         <Linha
           label="Género"
           value={outroOu(GENERO_LABELS, character.genero, character.genero_outro)}
@@ -191,6 +192,7 @@ export function FichaPreview({
           value={outroOu(GRUPO_LABELS, character.grupo, character.grupo_outro)}
         />
         <Linha label="Lore adicional" value={character.lore_adicional} />
+        <Linha label="Mídia inspirada" value={character.midia_inspirada_texto} />
       </section>
 
       <section className="mt-2">

@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useCallback } from "react";
+import { useMemo, useCallback, useRef } from "react";
 import {
   ReactFlow,
   Background,
@@ -8,6 +8,7 @@ import {
   MiniMap,
   type Node,
   type Edge,
+  type NodeDragHandler,
   MarkerType,
 } from "reactflow";
 import "reactflow/dist/style.css";
@@ -19,6 +20,11 @@ import {
   type CharacterRelation,
   type Group,
 } from "@/lib/relations/types";
+import {
+  guardarPosicaoNo,
+  type NodePosition,
+  type TipoNoMapa,
+} from "@/lib/relations/node-positions-actions";
 
 export type PersonagemDoGrafo = {
   id: string;
@@ -29,6 +35,14 @@ type Props = {
   personagens: PersonagemDoGrafo[];
   grupos: Group[];
   relacoes: CharacterRelation[];
+  /** Posições guardadas manualmente (drag do CRIADOR); sobrepõem o layout automático. */
+  posicoesGuardadas?: NodePosition[];
+  /**
+   * true = permite arrastar os nós e persiste a posição ao largar
+   * (só em /admin/mapa, para o CRIADOR). false = grafo só de leitura,
+   * como em /mapa para jogadores.
+   */
+  podeArrastar?: boolean;
   /** Chamado ao clicar num nó de personagem — para abrir a ficha resumida. */
   onClickPersonagem?: (characterId: string) => void;
   /** Chamado ao clicar numa aresta — usado em /admin/mapa para oferecer apagar. */
@@ -38,19 +52,21 @@ type Props = {
 // Layout determinístico simples (sem dependência de d3-force): grupos
 // numa linha no topo, personagens distribuídas por baixo em grelha. Não é
 // tão orgânico como um layout de forças, mas é estável entre renders e
-// não precisa de mais nenhuma biblioteca — o utilizador pode sempre
-// arrastar os nós manualmente depois (react-flow trata disso de base).
+// não precisa de mais nenhuma biblioteca. Usado como fallback para
+// qualquer nó que ainda não tenha uma posição guardada manualmente.
 function calcularLayout(
   personagens: PersonagemDoGrafo[],
-  grupos: Group[]
+  grupos: Group[],
+  posicoesPorNoId: Map<string, { x: number; y: number }>
 ): { nodes: Node[]; edges: Edge[] } {
   const nodes: Node[] = [];
 
   const espacamentoGrupo = 220;
   grupos.forEach((grupo, i) => {
+    const noId = idNoGrupo(grupo.id);
     nodes.push({
-      id: idNoGrupo(grupo.id),
-      position: { x: i * espacamentoGrupo, y: 0 },
+      id: noId,
+      position: posicoesPorNoId.get(noId) ?? { x: i * espacamentoGrupo, y: 0 },
       data: { label: grupo.nome },
       style: {
         background: "#292524",
@@ -73,9 +89,14 @@ function calcularLayout(
   personagens.forEach((personagem, i) => {
     const col = i % colunas;
     const linha = Math.floor(i / colunas);
+    const noId = idNoPersonagem(personagem.id);
     nodes.push({
-      id: idNoPersonagem(personagem.id),
-      position: { x: col * espacamentoX, y: offsetY + linha * espacamentoY },
+      id: noId,
+      position:
+        posicoesPorNoId.get(noId) ?? {
+          x: col * espacamentoX,
+          y: offsetY + linha * espacamentoY,
+        },
       data: { label: personagem.nome },
       style: {
         background: "#171717",
@@ -93,16 +114,38 @@ function calcularLayout(
   return { nodes, edges: [] };
 }
 
+/** Extrai (tipo, ref_id) a partir do id de nó "char:<uuid>" ou "grupo:<uuid>". */
+function tipoERefDoNoId(noId: string): { tipo: TipoNoMapa; refId: string } | null {
+  if (noId.startsWith("char:")) {
+    return { tipo: "personagem", refId: noId.replace("char:", "") };
+  }
+  if (noId.startsWith("grupo:")) {
+    return { tipo: "grupo", refId: noId.replace("grupo:", "") };
+  }
+  return null;
+}
+
 export function GrafoRelacoes({
   personagens,
   grupos,
   relacoes,
+  posicoesGuardadas = [],
+  podeArrastar = false,
   onClickPersonagem,
   onClickAresta,
 }: Props) {
+  const posicoesPorNoId = useMemo(() => {
+    const mapa = new Map<string, { x: number; y: number }>();
+    for (const p of posicoesGuardadas) {
+      const noId = p.tipo === "personagem" ? idNoPersonagem(p.ref_id) : idNoGrupo(p.ref_id);
+      mapa.set(noId, { x: p.x, y: p.y });
+    }
+    return mapa;
+  }, [posicoesGuardadas]);
+
   const { nodes } = useMemo(
-    () => calcularLayout(personagens, grupos),
-    [personagens, grupos]
+    () => calcularLayout(personagens, grupos, posicoesPorNoId),
+    [personagens, grupos, posicoesPorNoId]
   );
 
   const edges: Edge[] = useMemo(
@@ -136,8 +179,15 @@ export function GrafoRelacoes({
     [relacoes]
   );
 
+  // Evita disparar guardarPosicaoNo() repetidamente durante o próprio
+  // gesto de arrastar — react-flow chama onNodeDrag a cada frame; só
+  // queremos persistir no fim, em onNodeDragStop.
+  const aArrastarRef = useRef(false);
+
   const handleNodeClick = useCallback(
     (_: React.MouseEvent, node: Node) => {
+      // Evita interpretar o fim de um drag como um clique (abrir ficha).
+      if (aArrastarRef.current) return;
       if (node.id.startsWith("char:") && onClickPersonagem) {
         onClickPersonagem(node.id.replace("char:", ""));
       }
@@ -154,13 +204,27 @@ export function GrafoRelacoes({
     [relacoes, onClickAresta]
   );
 
+  const handleNodeDragStart: NodeDragHandler = useCallback(() => {
+    aArrastarRef.current = true;
+  }, []);
+
+  const handleNodeDragStop: NodeDragHandler = useCallback((_, node) => {
+    aArrastarRef.current = false;
+    const alvo = tipoERefDoNoId(node.id);
+    if (!alvo) return;
+    void guardarPosicaoNo(alvo.tipo, alvo.refId, node.position.x, node.position.y);
+  }, []);
+
   return (
     <div style={{ height: 600 }} className="rounded-md border border-neutral-800">
       <ReactFlow
         nodes={nodes}
         edges={edges}
+        nodesDraggable={podeArrastar}
         onNodeClick={handleNodeClick}
         onEdgeClick={handleEdgeClick}
+        onNodeDragStart={podeArrastar ? handleNodeDragStart : undefined}
+        onNodeDragStop={podeArrastar ? handleNodeDragStop : undefined}
         fitView
         proOptions={{ hideAttribution: true }}
       >
