@@ -5,6 +5,8 @@ import { createClient } from "@/lib/supabase/server";
 import type { Character, MidiaInspirada } from "@/lib/characters/types";
 import { urlRetrato } from "@/lib/characters/retrato-url";
 import { comUrlsMidiaInspirada } from "@/lib/characters/midia-inspirada-url";
+import { comUrlsArte } from "@/lib/characters/arte-url";
+import type { ArteItem } from "@/lib/characters/arte-actions";
 import { FormFicha } from "@/components/characters/form-ficha";
 import { AcoesFicha } from "@/components/characters/acoes-ficha";
 import { ToggleVisibilidade } from "@/components/characters/toggle-visibilidade";
@@ -48,10 +50,27 @@ export default async function FichaPage({
     .eq("character_id", character.id)
     .order("ordem", { ascending: true });
 
-  const [retratoUrl, midiaInspiradaItens] = await Promise.all([
+  const { data: arteData } = await supabase
+    .from("character_art")
+    .select("*")
+    .eq("character_id", character.id)
+    .order("created_at", { ascending: false });
+
+  const buscarGrupoNome = character.group_id
+    ? supabase
+        .from("groups")
+        .select("nome")
+        .eq("id", character.group_id)
+        .maybeSingle()
+    : Promise.resolve({ data: null });
+
+  const [retratoUrl, midiaInspiradaItens, arteItens, grupoData] = await Promise.all([
     urlRetrato(character.retrato_path),
     comUrlsMidiaInspirada((midiaInspiradaData ?? []) as MidiaInspirada[]),
+    comUrlsArte((arteData ?? []) as ArteItem[]),
+    buscarGrupoNome,
   ]);
+  const grupoNome = grupoData?.data?.nome ?? null;
 
   return (
     <main className="mx-auto w-full max-w-2xl px-6 py-16">
@@ -92,6 +111,8 @@ export default async function FichaPage({
         podeEditar={podeEditar}
         retratoUrl={retratoUrl}
         midiaInspiradaItens={midiaInspiradaItens}
+        arteItens={arteItens}
+        grupoNome={grupoNome}
       />
     </main>
   );

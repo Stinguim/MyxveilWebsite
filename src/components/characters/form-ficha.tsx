@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { atualizarFicha, criarFicha } from "@/lib/characters/actions";
 import { useDebouncedEffect } from "@/lib/use-debounced-effect";
 import type { Character, MidiaInspirada as MidiaInspiradaItem } from "@/lib/characters/types";
+import type { ArteItem } from "@/lib/characters/arte-actions";
 import { ATRIBUTOS_KEYS, nivelDominioMaisAlto } from "@/lib/characters/types";
 import { AtributosEditor } from "@/components/characters/atributos-editor";
 import {
@@ -22,13 +23,14 @@ import {
   ELEMENTO_OPCOES,
   ESPECIE_OPCOES,
   GENERO_OPCOES,
-  GRUPO_OPCOES,
   NIVEL_DOMINIO_LABELS,
   NIVEL_OPCOES,
   ORIGEM_OPCOES,
 } from "@/components/characters/opcoes";
 import { FichaPreview } from "@/components/characters/ficha-preview";
 import { MidiaInspirada } from "@/components/characters/midia-inspirada";
+import { GaleriaArte } from "@/components/characters/galeria-arte";
+import { CampoGrupo } from "@/components/characters/campo-grupo";
 import { SubmitButton } from "@/components/submit-button";
 
 type Props = {
@@ -45,6 +47,10 @@ type Props = {
   retratoUrl?: string | null;
   /** Itens da mini-galeria de mídia inspirada, já com URL pública. */
   midiaInspiradaItens?: (MidiaInspiradaItem & { url: string })[];
+  /** Itens da galeria de arte pública, já com URL pública. */
+  arteItens?: (ArteItem & { url: string })[];
+  /** Nome do grupo já resolvido (via group_id), passado pelo Server Component pai. */
+  grupoNome?: string | null;
 };
 
 const nivelOpcoesLabeled: [string, string][] = NIVEL_OPCOES.map((n) => [
@@ -57,6 +63,8 @@ export function FormFicha({
   podeEditar = true,
   retratoUrl = null,
   midiaInspiradaItens = [],
+  arteItens = [],
+  grupoNome = null,
 }: Props) {
   const isEdicao = Boolean(character);
   const [modoPreview, setModoPreview] = useState(!podeEditar && isEdicao);
@@ -77,7 +85,12 @@ export function FormFicha({
   const [genero, setGenero] = useState(character?.genero ?? "");
   const [especie, setEspecie] = useState(character?.especie ?? "");
   const [origem, setOrigem] = useState(character?.origem ?? "");
-  const [grupo, setGrupo] = useState(character?.grupo ?? "");
+  const [grupoSelecionado, setGrupoSelecionado] = useState(
+    character?.group_id ?? (character?.grupo_pedido_outro ? "outro" : "")
+  );
+  const [grupoPedidoOutro, setGrupoPedidoOutro] = useState(
+    character?.grupo_pedido_outro ?? ""
+  );
   const [elemento, setElemento] = useState(character?.elemento_paranormal ?? "");
   const [classePrincipalNivel, setClassePrincipalNivel] = useState(
     character?.classe_principal_nivel ?? 1
@@ -128,7 +141,7 @@ export function FormFicha({
       if (!isEdicao) return;
       void handleAutoSave();
     },
-    [genero, especie, origem, grupo, elemento],
+    [genero, especie, origem, grupoSelecionado, elemento],
     1200
   );
 
@@ -197,7 +210,14 @@ export function FormFicha({
             </button>
           </div>
         )}
-        <FichaPreview character={character} retratoUrl={retratoUrl} />
+        <FichaPreview character={character} retratoUrl={retratoUrl} grupoNome={grupoNome} />
+        <div className="mt-8">
+          <GaleriaArte
+            characterId={character.id}
+            itens={arteItens}
+            podeEditar={podeEditar}
+          />
+        </div>
       </div>
     );
   }
@@ -234,7 +254,7 @@ export function FormFicha({
         <Campo label="Idade" hint="Recomendado entre 18 e 60, mas não obrigatório.">
           <CampoTexto name="idade" type="number" defaultValue={character?.idade} />
         </Campo>
-        <Campo label="Altura" hint="Texto livre — ex: 1,80m, cerca de 6 pés.">
+        <Campo label="Altura" hint="Texto livre, em metros. Ex: 1,80m.">
           <CampoTexto name="altura" defaultValue={character?.altura} />
         </Campo>
         <Campo label="Género">
@@ -291,7 +311,7 @@ export function FormFicha({
 
       <h2 className="text-lg font-medium">Psicológico / roleplay</h2>
       <p className="-mt-6 text-sm text-neutral-500">
-        Tudo opcional — só para quem quiser aprofundar o personagem.
+        Tudo opcional, só para quem quiser aprofundar o personagem.
       </p>
       <div className="grid grid-cols-1 gap-4" onBlur={handleFieldBlur}>
         <Campo label="Rotina diária">
@@ -339,22 +359,13 @@ export function FormFicha({
             defaultValue={character?.primeira_interacao_paranormal}
           />
         </Campo>
-        <Campo
-          label="Grupo a que pertence"
-          hint="Dica de DM: se não estiveres familiarizado com a história, não te aconselho a escolheres um grupo que não conheças."
-        >
-          <CampoSelect
-            name="grupo"
-            defaultValue={character?.grupo}
-            options={GRUPO_OPCOES}
-            onChange={setGrupo}
-          />
-        </Campo>
-        {grupo === "outro" && (
-          <Campo label="Grupo (outro)">
-            <CampoTexto name="grupo_outro" defaultValue={character?.grupo_outro} />
-          </Campo>
-        )}
+        <CampoGrupo
+          valorSelecionado={grupoSelecionado}
+          onChangeSelecionado={setGrupoSelecionado}
+          valorPedidoOutro={grupoPedidoOutro}
+          onChangePedidoOutro={setGrupoPedidoOutro}
+          onBlurCampo={handleFieldBlur}
+        />
         <Campo label="Lore adicional do personagem">
           <CampoTextarea
             name="lore_adicional"
@@ -379,6 +390,16 @@ export function FormFicha({
           <MidiaInspirada
             characterId={character.id}
             itens={midiaInspiradaItens}
+            podeEditar={podeEditar}
+          />
+        </div>
+      )}
+
+      {isEdicao && character && (
+        <div>
+          <GaleriaArte
+            characterId={character.id}
+            itens={arteItens}
             podeEditar={podeEditar}
           />
         </div>
@@ -467,7 +488,7 @@ export function FormFicha({
       <div onBlur={handleFieldBlur}>
         <Campo
           label="Conexão com elemento paranormal"
-          hint="Como o teu personagem (não a arma) interage com o paranormal — ex: Magia/Energia, Tecnologia, Onirismo. Se não tiveres a certeza, é melhor deixares a história decidir ou escolheres Nenhum."
+          hint="Como o teu personagem (não a arma) interage com o paranormal, ex: Magia/Energia, Tecnologia, Onirismo. Se não tiveres a certeza, é melhor deixares a história decidir ou escolheres Nenhum."
         >
           <CampoSelect
             name="elemento_paranormal"
@@ -489,7 +510,7 @@ export function FormFicha({
       </div>
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2" onBlur={handleFieldBlur}>
-        <Campo label="Arma" hint="Opcional — texto livre.">
+        <Campo label="Arma" hint="Opcional, texto livre.">
           <CampoTexto name="arma" defaultValue={character?.arma} />
         </Campo>
       </div>

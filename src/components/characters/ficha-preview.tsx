@@ -5,7 +5,6 @@ import {
   ESPECIE_LABELS,
   ESTADO_LABELS,
   GENERO_LABELS,
-  GRUPO_LABELS,
   NIVEL_DOMINIO_LABELS,
   ORIGEM_LABELS,
 } from "@/lib/characters/types";
@@ -40,6 +39,7 @@ function outroOu<T extends string>(
 export function FichaPreview({
   character,
   retratoUrl,
+  grupoNome,
 }: {
   character: Character | CharacterWithOwner;
   /**
@@ -50,6 +50,13 @@ export function FichaPreview({
    * com chamadas antigas que ainda não passam este prop).
    */
   retratoUrl?: string | null;
+  /**
+   * Nome do grupo já resolvido (character.group_id só tem o uuid) — o
+   * Server Component pai faz o join com public.groups antes de passar
+   * aqui, já que este componente também corre a partir de um Client
+   * Component (form-ficha.tsx) sem acesso direto à BD.
+   */
+  grupoNome?: string | null;
 }) {
   const ownerLabel =
     "owner_nome_alcunha" in character
@@ -189,7 +196,7 @@ export function FichaPreview({
         />
         <Linha
           label="Grupo"
-          value={outroOu(GRUPO_LABELS, character.grupo, character.grupo_outro)}
+          value={grupoNome ?? (character.grupo_pedido_outro ? `${character.grupo_pedido_outro} (pedido pendente)` : null)}
         />
         <Linha label="Lore adicional" value={character.lore_adicional} />
         <Linha label="Mídia inspirada" value={character.midia_inspirada_texto} />

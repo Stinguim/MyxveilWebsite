@@ -11,7 +11,6 @@ import type {
   ElementoParanormal,
   EstadoFicha,
   Genero,
-  Grupo,
   Origem,
   VisibilidadeFicha,
 } from "@/lib/characters/types";
@@ -47,8 +46,8 @@ type ParsedCharacterFields = {
   talento_mundano: string | null;
   comportamento_sob_pressao: string | null;
   primeira_interacao_paranormal: string | null;
-  grupo: Grupo | null;
-  grupo_outro: string | null;
+  group_id: string | null;
+  grupo_pedido_outro: string | null;
   lore_adicional: string | null;
   midia_inspirada_texto: string | null;
   atributo_for: number;
@@ -101,6 +100,18 @@ function parseCharacterForm(
     return Number.isFinite(n) ? Math.min(5, Math.max(1, Math.round(n))) : null;
   };
 
+  // Grupo: o select no formulário usa "" = nenhum, "outro" = pedido de
+  // grupo novo (texto livre em grupo_pedido_outro), ou o uuid de um
+  // group existente. Nunca os dois (group_id e grupo_pedido_outro)
+  // preenchidos ao mesmo tempo.
+  const grupoSelecionado = String(formData.get("group_id") ?? "").trim();
+  const group_id =
+    grupoSelecionado && grupoSelecionado !== "outro" ? grupoSelecionado : null;
+  const grupo_pedido_outro =
+    grupoSelecionado === "outro"
+      ? String(formData.get("grupo_pedido_outro") ?? "").trim() || null
+      : null;
+
   return {
     nome,
     idade,
@@ -129,8 +140,8 @@ function parseCharacterForm(
     primeira_interacao_paranormal:
       String(formData.get("primeira_interacao_paranormal") ?? "").trim() ||
       null,
-    grupo: readEnum<Grupo>("grupo"),
-    grupo_outro: String(formData.get("grupo_outro") ?? "").trim() || null,
+    group_id,
+    grupo_pedido_outro,
     lore_adicional: String(formData.get("lore_adicional") ?? "").trim() || null,
     midia_inspirada_texto:
       String(formData.get("midia_inspirada_texto") ?? "").trim() || null,
@@ -192,6 +203,13 @@ export async function criarFicha(formData: FormData): Promise<ActionResult> {
     return { error: "Não foi possível criar a ficha. Tenta novamente." };
   }
 
+  // Se o CRIADOR criou já com um pedido de grupo novo ("outro"), cria o
+  // grupo de imediato — a ficha já nasce aprovada, por isso não faz
+  // sentido esperar por uma "aprovação" que já aconteceu.
+  if (isCriador && parsed.grupo_pedido_outro) {
+    await materializarGrupoPedido(data.id, parsed.grupo_pedido_outro);
+  }
+
   revalidatePath("/fichas");
   redirect(`/fichas/${data.id}`);
 }
@@ -242,6 +260,47 @@ export async function atualizarFicha(
   return { success: true, character: data };
 }
 
+/**
+ * Cria (ou reaproveita, se já existir com o mesmo nome) um grupo em
+ * public.groups a partir de um pedido de texto livre, e liga a ficha a
+ * ele via group_id, limpando grupo_pedido_outro. Chamado quando o
+ * CRIADOR aprova uma ficha com um pedido de grupo pendente, ou quando o
+ * próprio CRIADOR cria/edita uma ficha já aprovada com esse pedido.
+ */
+async function materializarGrupoPedido(
+  characterId: string,
+  nomeGrupoPedido: string
+): Promise<void> {
+  const supabase = await createClient();
+
+  const { data: grupoExistente } = await supabase
+    .from("groups")
+    .select("id")
+    .eq("nome", nomeGrupoPedido)
+    .maybeSingle();
+
+  let groupId = grupoExistente?.id as string | undefined;
+
+  if (!groupId) {
+    const { data: grupoNovo } = await supabase
+      .from("groups")
+      .insert({ nome: nomeGrupoPedido })
+      .select("id")
+      .maybeSingle();
+    groupId = grupoNovo?.id;
+  }
+
+  if (!groupId) return; // RLS bloqueou ou outro erro silencioso — não interrompe o fluxo de aprovação.
+
+  await supabase
+    .from("characters")
+    .update({ group_id: groupId, grupo_pedido_outro: null })
+    .eq("id", characterId);
+
+  revalidatePath("/mapa");
+  revalidatePath("/admin/mapa");
+}
+
 async function mudarEstado(
   characterId: string,
   novoEstado: EstadoFicha
@@ -277,14 +336,24 @@ export async function submeterFicha(characterId: string) {
 }
 
 /**
- * Só o CRIADOR consegue de facto executar isto — a policy
+ * Só o CRIADOR consegue de facto executar isto, a policy
  * "characters_update" só permite estado='aprovada' quando
  * public.is_criador() é verdadeiro. Se um jogador chamar isto na sua
  * própria ficha, a RLS bloqueia e devolvemos o erro explícito acima
  * (em vez do falso "sucesso" que existia antes desta revisão).
+ *
+ * Também materializa um pedido de grupo pendente (grupo_pedido_outro):
+ * ao aprovar, se a ficha ainda não tiver group_id mas tiver um pedido
+ * de texto livre, o grupo é criado em public.groups (ou reaproveitado
+ * se já existir com o mesmo nome) e a ficha passa a apontar para ele.
  */
 export async function aprovarFicha(characterId: string) {
-  return mudarEstado(characterId, "aprovada");
+  const resultado = await mudarEstado(characterId, "aprovada");
+  if ("success" in resultado && resultado.character.grupo_pedido_outro) {
+    await materializarGrupoPedido(characterId, resultado.character.grupo_pedido_outro);
+    revalidatePath(`/fichas/${characterId}`);
+  }
+  return resultado;
 }
 
 export async function arquivarFicha(characterId: string) {
@@ -360,9 +429,11 @@ export async function apagarFicha(
  * campanha.
  *
  * Nota: mesmo que quem duplique seja o CRIADOR, a cópia nasce em
- * 'rascunho' propositadamente — só a criação original via formulário
+ * 'rascunho' propositadamente, só a criação original via formulário
  * aplica a auto-aprovação, para não haver aprovações "invisíveis" em
- * massa ao duplicar fichas de outros jogadores.
+ * massa ao duplicar fichas de outros jogadores. Por consistência, também
+ * não materializa pedidos de grupo pendentes aqui (fica para quando a
+ * cópia for de facto aprovada).
  */
 export async function duplicarFicha(original: Character): Promise<ActionResult> {
   const current = await getCurrentUser();
@@ -390,8 +461,8 @@ export async function duplicarFicha(original: Character): Promise<ActionResult> 
     talento_mundano: original.talento_mundano,
     comportamento_sob_pressao: original.comportamento_sob_pressao,
     primeira_interacao_paranormal: original.primeira_interacao_paranormal,
-    grupo: original.grupo,
-    grupo_outro: original.grupo_outro,
+    group_id: original.group_id,
+    grupo_pedido_outro: original.grupo_pedido_outro,
     lore_adicional: original.lore_adicional,
     midia_inspirada_texto: original.midia_inspirada_texto,
     atributo_for: original.atributo_for,

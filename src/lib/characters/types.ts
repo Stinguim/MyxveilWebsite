@@ -2,16 +2,6 @@ export type Genero = "homem" | "mulher" | "nao_binario" | "outro";
 export type Especie = "humano" | "furry" | "monstro" | "outro";
 export type Origem = "cidade" | "vila" | "campo" | "nenhum_especifico" | "outro";
 
-export type Grupo =
-  | "apic"
-  | "pawned"
-  | "culto_da_duvessa"
-  | "ajudantes_do_eshir"
-  | "void"
-  | "anormais"
-  | "nenhum"
-  | "outro";
-
 export type Classe =
   | "tank"
   | "dps_subdps"
@@ -38,6 +28,15 @@ export type ElementoParanormal =
 export type EstadoFicha = "rascunho" | "submetida" | "aprovada" | "arquivada";
 export type VisibilidadeFicha = "publica" | "privada";
 
+/** Grupo/facção, carregado dinamicamente de public.groups (mapa de relações). */
+export type Group = {
+  id: string;
+  nome: string;
+  descricao: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
 export type Character = {
   id: string;
   owner_id: string;
@@ -63,8 +62,10 @@ export type Character = {
   talento_mundano: string | null;
   comportamento_sob_pressao: string | null;
   primeira_interacao_paranormal: string | null;
-  grupo: Grupo | null;
-  grupo_outro: string | null;
+  /** Grupo/facção escolhido, referência dinâmica a public.groups. null = sem grupo, ou pedido pendente em grupo_pedido_outro. */
+  group_id: string | null;
+  /** Nome de um grupo novo pedido pelo jogador ("Outro"); só vira group_id real quando o CRIADOR aprova a ficha. */
+  grupo_pedido_outro: string | null;
   lore_adicional: string | null;
   midia_inspirada_texto: string | null;
 
@@ -106,6 +107,15 @@ export type CharacterWithOwner = Character & {
   owner_discord_username: string | null;
 };
 
+/**
+ * Character com o nome do grupo já resolvido (junta a groups.nome via
+ * group_id) — usado onde é preciso mostrar o nome do grupo sem fazer um
+ * join manual extra na página (ex: FichaPreview, ficha jogável).
+ */
+export type CharacterComGrupo = Character & {
+  grupo_nome: string | null;
+};
+
 /** Item da mini-galeria de "mídia inspirada" (character_midia_inspirada). */
 export type MidiaInspirada = {
   id: string;
@@ -131,7 +141,7 @@ export const TOTAL_PONTOS_POR_NIVEL: Record<number, number> = {
   5: 21,
 };
 
-/** Mantido para compatibilidade — total de pontos a nível 1. */
+/** Mantido para compatibilidade, total de pontos a nível 1. */
 export const TOTAL_PONTOS_ATRIBUTOS_NIVEL_1 = TOTAL_PONTOS_POR_NIVEL[1];
 
 /** Nível de domínio mais alto entre classe principal e secundária (default 1). */
@@ -177,17 +187,6 @@ export const ORIGEM_LABELS: Record<Origem, string> = {
   outro: "Outro",
 };
 
-export const GRUPO_LABELS: Record<Grupo, string> = {
-  apic: "APIC",
-  pawned: "PAWNED",
-  culto_da_duvessa: "Culto da Duvessa",
-  ajudantes_do_eshir: "Ajudantes do Eshir",
-  void: "Void",
-  anormais: "Anormais",
-  nenhum: "Nenhum",
-  outro: "Outro",
-};
-
 export const CLASSE_LABELS: Record<Classe, string> = {
   tank: "Tank",
   dps_subdps: "DPS/SubDPS",
@@ -221,9 +220,9 @@ export const ESTADO_LABELS: Record<EstadoFicha, string> = {
 };
 
 export const NIVEL_DOMINIO_LABELS: Record<number, string> = {
-  1: "1 — Iniciante",
-  2: "2 — Adepto",
-  3: "3 — Especialista",
-  4: "4 — Ascensão",
-  5: "5 — Divindade",
+  1: "1: Iniciante",
+  2: "2: Adepto",
+  3: "3: Especialista",
+  4: "4: Ascensão",
+  5: "5: Divindade",
 };

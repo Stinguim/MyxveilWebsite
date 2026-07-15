@@ -10,7 +10,6 @@ import {
   ELEMENTO_PARANORMAL_LABELS,
   ESPECIE_LABELS,
   GENERO_LABELS,
-  GRUPO_LABELS,
   NIVEL_DOMINIO_LABELS,
   ORIGEM_LABELS,
 } from "@/lib/characters/types";
@@ -66,21 +65,31 @@ export default async function FichaJogarPage({
   const isDono = character.owner_id === current.user.id;
   const isCriador = current.profile.role === "criador";
 
-  // Ficha jogável é só para dono/CRIADOR — o resto vê o preview em
+  // Ficha jogável é só para dono/CRIADOR, o resto vê o preview em
   // /fichas/[id] (secção 3 da spec: jogadores só editam/"jogam" as suas
   // próprias fichas).
   if (!isDono && !isCriador) {
     redirect(`/fichas/${id}`);
   }
 
-  const [{ data: recursos }, retratoUrl] = await Promise.all([
+  const buscarGrupoNome = character.group_id
+    ? supabase
+        .from("groups")
+        .select("nome")
+        .eq("id", character.group_id)
+        .maybeSingle()
+    : Promise.resolve({ data: null });
+
+  const [{ data: recursos }, retratoUrl, grupoData] = await Promise.all([
     supabase
       .from("character_recursos")
       .select("*")
       .eq("character_id", character.id)
       .order("ordem", { ascending: true }),
     urlRetrato(character.retrato_path),
+    buscarGrupoNome,
   ]);
+  const grupoNome = grupoData?.data?.nome ?? null;
 
   const classePrincipalLabel = character.classe_principal
     ? `${CLASSE_LABELS[character.classe_principal]} · ${
@@ -117,6 +126,7 @@ export default async function FichaJogarPage({
               outroOu(GENERO_LABELS, character.genero, character.genero_outro),
               outroOu(ESPECIE_LABELS, character.especie, character.especie_outro),
               outroOu(ORIGEM_LABELS, character.origem, character.origem_outro),
+              character.altura,
             ]
               .filter(Boolean)
               .join(" · ")}
@@ -213,15 +223,15 @@ export default async function FichaJogarPage({
       </div>
 
       {/* Roleplay / lore, colapsado visualmente em texto corrido */}
-      {(character.aparencia || character.lore_adicional || character.grupo) && (
+      {(character.aparencia || character.lore_adicional || grupoNome || character.grupo_pedido_outro) && (
         <div className="rounded-lg border border-neutral-800 bg-neutral-900/40 p-4">
           <h2 className="mb-3 text-sm font-medium uppercase tracking-wide text-neutral-500">
             Roleplay
           </h2>
-          {character.grupo && (
+          {(grupoNome || character.grupo_pedido_outro) && (
             <p className="mb-2 text-sm">
               <span className="text-neutral-500">Grupo: </span>
-              {outroOu(GRUPO_LABELS, character.grupo, character.grupo_outro)}
+              {grupoNome ?? `${character.grupo_pedido_outro} (pedido pendente)`}
             </p>
           )}
           {character.aparencia && (
