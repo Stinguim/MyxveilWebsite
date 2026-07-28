@@ -12,9 +12,19 @@
 -- - group_id null + grupo_pedido_outro preenchido = jogador pediu um
 --   grupo que ainda não existe ("Outro"); o grupo só é criado de facto
 --   quando o CRIADOR aprova a ficha (ver alteração a aprovarFicha em
---   src/lib/characters/actions.ts) — nesse momento group_id passa a
+--   src/lib/characters/actions.ts), nesse momento group_id passa a
 --   apontar para o grupo recém-criado e grupo_pedido_outro é limpo.
 -- - Ambos null = "Nenhum" (sem grupo).
+--
+-- NOTA IMPORTANTE (2ª correção): a view characters_with_owner (migration
+-- 0008) usa "select c.*" — o Postgres expande isto para a lista de
+-- colunas da tabela QUE EXISTE NO MOMENTO DO CREATE VIEW. Recriar a view
+-- antes do DROP COLUMN não resolve nada, porque nesse momento a coluna
+-- 'grupo' ainda existe e volta a entrar na expansão de "c.*". A ordem
+-- certa é: DROP COLUMN ... CASCADE (que apaga a view automaticamente
+-- como efeito colateral documentado), e só depois recriar a view do
+-- zero — nessa altura "c.*" já não inclui 'grupo', porque a coluna já
+-- não existe.
 -- ============================================================================
 
 -- 1. Nova coluna, referência a groups. on delete set null: se o CRIADOR
@@ -103,22 +113,21 @@ begin
   end loop;
 end $$;
 
--- 5. Remove a coluna antiga (enum) — os dados relevantes já foram
---    migrados para group_id (passo 2) ou preservados em
---    grupo_pedido_outro (passo 3/4) para os casos "outro" ainda por
---    aprovar.
+-- 5. Remove a coluna antiga (enum) com CASCADE — os dados relevantes já
+--    foram migrados para group_id (passo 2) ou preservados em
+--    grupo_pedido_outro (passo 3/4). CASCADE apaga automaticamente
+--    characters_with_owner, que dependia desta coluna via "select c.*";
+--    é recriada já sem ela no passo 6.
 alter table public.characters
-  drop column grupo;
+  drop column grupo cascade;
 
 comment on column public.characters.group_id is
   'Grupo/facção a que o personagem pertence, referência dinâmica a public.groups (gerido em /admin/mapa). NULL = sem grupo, ou pedido pendente em grupo_pedido_outro.';
 
--- 6. Recria characters_with_owner: "c.*" fica congelado na lista de
---    colunas do momento do CREATE VIEW (ver nota na migration 0017);
---    sem isto, group_id e grupo_pedido_outro não apareceriam na
---    listagem /fichas.
-drop view if exists public.characters_with_owner;
-
+-- 6. Recria characters_with_owner (apagada pelo CASCADE do passo 5).
+--    Agora "c.*" já não inclui 'grupo' (foi removida), por isso a view
+--    fica automaticamente com group_id e grupo_pedido_outro em vez
+--    disso, sem precisar de os listar à mão.
 create view public.characters_with_owner
   with (security_invoker = true)
   as
@@ -130,6 +139,6 @@ create view public.characters_with_owner
   join public.profiles p on p.id = c.owner_id;
 
 comment on view public.characters_with_owner is
-  'characters + nome/alcunha do dono. security_invoker garante que a RLS de characters continua a aplicar-se. IMPORTANTE: recriar esta view (drop + create) sempre que uma coluna nova for adicionada a characters, porque "c.*" fica congelado na lista de colunas do momento do CREATE VIEW.';
+  'characters + nome/alcunha do dono. security_invoker garante que a RLS de characters continua a aplicar-se. IMPORTANTE: recriar esta view (drop + create) sempre que uma coluna nova for adicionada/removida em characters, porque "c.*" fica congelado na lista de colunas do momento do CREATE VIEW.';
 
 grant select on public.characters_with_owner to authenticated;
