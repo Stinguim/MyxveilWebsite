@@ -1,18 +1,40 @@
 @import "tailwindcss";
 
 :root {
-  --background: #0a0a0a;
-  --foreground: #ededed;
+  /* Paleta "Myxveil" — preto azulado-violeta, âmbar de vela, vinho profundo */
+  --background: #0a0912;
+  --background-deep: #050408;
+  --foreground: #e8e4dc;
+  --muted: #8b8698;
+  --veil-amber: #c9a13b;
+  --veil-amber-soft: #e0bd6a;
+  --veil-wine: #5a1f2e;
+  --veil-line: #232030;
 }
 
 @theme inline {
   --color-background: var(--background);
+  --color-background-deep: var(--background-deep);
   --color-foreground: var(--foreground);
-  --font-sans: ui-sans-serif, system-ui, -apple-system, sans-serif;
+  --color-muted: var(--muted);
+  --color-veil-amber: var(--veil-amber);
+  --color-veil-amber-soft: var(--veil-amber-soft);
+  --color-veil-wine: var(--veil-wine);
+  --color-veil-line: var(--veil-line);
+  --font-display: var(--font-cinzel), ui-serif, Georgia, serif;
+  --font-sans: var(--font-sans-body), ui-sans-serif, system-ui, sans-serif;
   --font-mono: ui-monospace, "SFMono-Regular", monospace;
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+  }
 }

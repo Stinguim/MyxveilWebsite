@@ -6,39 +6,39 @@ export async function Navbar() {
   const current = await getCurrentUser();
 
   return (
-    <header className="border-b border-neutral-800">
+    <header className="border-b border-veil-line bg-background/80 backdrop-blur-sm">
       <nav className="mx-auto flex max-w-4xl items-center justify-between px-6 py-4">
-        <Link href="/" className="font-semibold">
-          Myxveil
+        <Link href="/" className="font-display text-lg tracking-wide text-foreground">
+          Myx<span className="text-veil-amber-soft">veil</span>
         </Link>
 
         <div className="flex items-center gap-4 text-sm">
           {current ? (
             <>
-              <Link href="/fichas" className="text-neutral-300 hover:text-white">
+              <Link href="/fichas" className="text-muted hover:text-veil-amber-soft">
                 Fichas
               </Link>
-              <Link href="/mapa" className="text-neutral-300 hover:text-white">
+              <Link href="/mapa" className="text-muted hover:text-veil-amber-soft">
                 Mapa
               </Link>
-              <Link href="/wiki" className="text-neutral-300 hover:text-white">
+              <Link href="/wiki" className="text-muted hover:text-veil-amber-soft">
                 Wiki
               </Link>
               {current.profile.role === "criador" && (
                 <Link
                   href="/admin"
-                  className="text-neutral-300 hover:text-white"
+                  className="text-muted hover:text-veil-amber-soft"
                 >
                   Admin
                 </Link>
               )}
-              <Link href="/perfil" className="text-neutral-300 hover:text-white">
+              <Link href="/perfil" className="text-muted hover:text-veil-amber-soft">
                 {current.profile.nome_alcunha || "Perfil"}
               </Link>
               <form action={logout}>
                 <button
                   type="submit"
-                  className="text-neutral-400 hover:text-white"
+                  className="text-muted/70 hover:text-veil-amber-soft"
                 >
                   Sair
                 </button>
@@ -46,12 +46,12 @@ export async function Navbar() {
             </>
           ) : (
             <>
-              <Link href="/login" className="text-neutral-300 hover:text-white">
+              <Link href="/login" className="text-muted hover:text-veil-amber-soft">
                 Entrar
               </Link>
               <Link
                 href="/registo"
-                className="rounded-md bg-neutral-100 px-3 py-1.5 text-neutral-900 hover:bg-white"
+                className="rounded-md bg-veil-amber px-3 py-1.5 text-background-deep font-medium hover:bg-veil-amber-soft"
               >
                 Criar conta
               </Link>
