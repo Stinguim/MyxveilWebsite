@@ -15,6 +15,7 @@ import {
 } from "@/lib/wiki/actions";
 import { CATEGORIAS_WIKI, gerarSlug, type WikiPage } from "@/lib/wiki/types";
 import { UploadImagemConteudo } from "@/components/content/upload-imagem-conteudo";
+import { InserirTituloConteudo } from "@/components/content/inserir-titulo-conteudo";
 
 // group_id fica de fora do formulário (secção 5/6: ligação a "super-nós"
 // do mapa de relações) até essa UI existir — o schema já suporta, o
@@ -102,7 +103,8 @@ export function FormPaginaWiki({ pagina }: { pagina?: WikiPage }) {
         label="Conteúdo"
         hint="Partes ainda por revelar aos jogadores: deixa a página como rascunho (não publicada) em vez de escrever versões incompletas do texto."
       >
-        <div className="mb-2">
+        <div className="mb-2 flex flex-wrap items-center gap-3">
+          <InserirTituloConteudo textareaRef={conteudoRef} />
           <UploadImagemConteudo origem="wiki" textareaRef={conteudoRef} />
         </div>
         <textarea

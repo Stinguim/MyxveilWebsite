@@ -15,6 +15,7 @@ import {
 } from "@/lib/guide/actions";
 import { CATEGORIAS_GUIA, gerarSlugGuia, type GuidePage } from "@/lib/guide/types";
 import { UploadImagemConteudo } from "@/components/content/upload-imagem-conteudo";
+import { InserirTituloConteudo } from "@/components/content/inserir-titulo-conteudo";
 
 const textareaClass =
   "mt-1 w-full rounded-md border border-neutral-700 bg-neutral-900 px-3 py-2 text-sm outline-none focus:border-neutral-400";
@@ -95,7 +96,8 @@ export function FormPaginaGuia({ pagina }: { pagina?: GuidePage }) {
       </Campo>
 
       <Campo label="Conteúdo">
-        <div className="mb-2">
+        <div className="mb-2 flex flex-wrap items-center gap-3">
+          <InserirTituloConteudo textareaRef={conteudoRef} />
           <UploadImagemConteudo origem="guia" textareaRef={conteudoRef} />
         </div>
         <textarea
