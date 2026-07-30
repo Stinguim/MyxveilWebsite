@@ -59,7 +59,10 @@ export function ConteudoComImagens({
             );
           }
           return (
-            <h4 key={index} className="text-base font-semibold text-neutral-200">
+            <h4
+              key={index}
+              className="-mt-2 text-base font-semibold text-neutral-200"
+            >
               {texto}
             </h4>
           );
