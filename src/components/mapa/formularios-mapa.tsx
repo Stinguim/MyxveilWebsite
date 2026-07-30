@@ -113,11 +113,18 @@ export function FormNovaRelacao({ personagens, grupos, onCriada }: Props) {
               className="flex-1 rounded-md border border-neutral-700 bg-neutral-900 px-2 py-1.5 text-sm"
             >
               <option value="">— Seleciona —</option>
-              {(alvoTipo === "personagem" ? personagens : grupos).map((item) => (
-                <option key={item.id} value={item.id}>
-                  {"nome" in item ? item.nome : item.id}
-                </option>
-              ))}
+
+              {alvoTipo === "personagem"
+                ? personagens.map((personagem) => (
+                    <option key={personagem.id} value={personagem.id}>
+                      {personagem.nome}
+                    </option>
+                  ))
+                : grupos.map((grupo) => (
+                    <option key={grupo.id} value={grupo.id}>
+                      {grupo.nome}
+                    </option>
+                  ))}
             </select>
           </div>
         </div>
