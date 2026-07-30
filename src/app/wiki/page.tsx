@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { WikiSidebar } from "@/components/wiki/wiki-sidebar";
 import { TextoComDestaque } from "@/components/wiki/wiki-destaque";
+import { ConteudoComImagens } from "@/components/content/conteudo-com-imagens";
 import { ORDEM_CATEGORIAS } from "@/lib/wiki/types";
 
 // A listagem em si já respeita a RLS (wiki_pages_select): jogadores só
@@ -36,9 +37,12 @@ export default async function WikiIndexPage({
             <h1 className="mb-4 text-2xl font-semibold">
               <TextoComDestaque texto={primeira.titulo} termo={destaque} />
             </h1>
-            <div className="whitespace-pre-wrap text-neutral-300">
-              <TextoComDestaque texto={primeira.conteudo} termo={destaque} />
-            </div>
+            <ConteudoComImagens
+              conteudo={primeira.conteudo}
+              renderTexto={(texto) => (
+                <TextoComDestaque texto={texto} termo={destaque} />
+              )}
+            />
           </article>
         ) : (
           <p className="text-neutral-500">

@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { isCriador } from "@/lib/auth/current-user";
 import { WikiSidebar } from "@/components/wiki/wiki-sidebar";
 import { TextoComDestaque } from "@/components/wiki/wiki-destaque";
+import { ConteudoComImagens } from "@/components/content/conteudo-com-imagens";
 
 export default async function WikiPaginaPage({
   params,
@@ -58,9 +59,12 @@ export default async function WikiPaginaPage({
               </div>
             )}
           </div>
-          <div className="whitespace-pre-wrap text-neutral-300">
-            <TextoComDestaque texto={pagina.conteudo} termo={destaque} />
-          </div>
+          <ConteudoComImagens
+            conteudo={pagina.conteudo}
+            renderTexto={(texto) => (
+              <TextoComDestaque texto={texto} termo={destaque} />
+            )}
+          />
         </article>
       </div>
     </div>

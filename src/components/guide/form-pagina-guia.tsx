@@ -1,11 +1,10 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import {
   Campo,
   CampoTexto,
-  CampoTextarea,
   CampoSelect,
 } from "@/components/campos";
 import { SubmitButton } from "@/components/submit-button";
@@ -15,12 +14,17 @@ import {
   apagarPaginaGuia,
 } from "@/lib/guide/actions";
 import { CATEGORIAS_GUIA, gerarSlugGuia, type GuidePage } from "@/lib/guide/types";
+import { UploadImagemConteudo } from "@/components/content/upload-imagem-conteudo";
+
+const textareaClass =
+  "mt-1 w-full rounded-md border border-neutral-700 bg-neutral-900 px-3 py-2 text-sm outline-none focus:border-neutral-400";
 
 export function FormPaginaGuia({ pagina }: { pagina?: GuidePage }) {
   const router = useRouter();
   const [erro, setErro] = useState<string | null>(null);
   const [titulo, setTitulo] = useState(pagina?.titulo ?? "");
   const [slugTocado, setSlugTocado] = useState(Boolean(pagina));
+  const conteudoRef = useRef<HTMLTextAreaElement>(null);
 
   async function onSubmit(formData: FormData) {
     setErro(null);
@@ -91,7 +95,16 @@ export function FormPaginaGuia({ pagina }: { pagina?: GuidePage }) {
       </Campo>
 
       <Campo label="Conteúdo">
-        <CampoTextarea name="conteudo" defaultValue={pagina?.conteudo} rows={16} />
+        <div className="mb-2">
+          <UploadImagemConteudo origem="guia" textareaRef={conteudoRef} />
+        </div>
+        <textarea
+          ref={conteudoRef}
+          name="conteudo"
+          defaultValue={pagina?.conteudo ?? ""}
+          rows={16}
+          className={textareaClass}
+        />
       </Campo>
 
       <Campo

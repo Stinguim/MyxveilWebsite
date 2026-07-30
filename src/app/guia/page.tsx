@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { GuiaSidebar } from "@/components/guide/guia-sidebar";
+import { ConteudoComImagens } from "@/components/content/conteudo-com-imagens";
 import { ORDEM_CATEGORIAS_GUIA } from "@/lib/guide/types";
 
 // A listagem em si já respeita a RLS (guide_pages_select): jogadores só
@@ -26,9 +27,7 @@ export default async function GuiaIndexPage() {
         {primeira ? (
           <article>
             <h1 className="mb-4 text-2xl font-semibold">{primeira.titulo}</h1>
-            <div className="whitespace-pre-wrap text-neutral-300">
-              {primeira.conteudo}
-            </div>
+            <ConteudoComImagens conteudo={primeira.conteudo} />
           </article>
         ) : (
           <p className="text-neutral-500">

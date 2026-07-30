@@ -3,6 +3,7 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { isCriador } from "@/lib/auth/current-user";
 import { GuiaSidebar } from "@/components/guide/guia-sidebar";
+import { ConteudoComImagens } from "@/components/content/conteudo-com-imagens";
 
 export default async function GuiaPaginaPage({
   params,
@@ -52,9 +53,7 @@ export default async function GuiaPaginaPage({
               </div>
             )}
           </div>
-          <div className="whitespace-pre-wrap text-neutral-300">
-            {pagina.conteudo}
-          </div>
+          <ConteudoComImagens conteudo={pagina.conteudo} />
         </article>
       </div>
     </div>
