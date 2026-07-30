@@ -3,13 +3,17 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { isCriador } from "@/lib/auth/current-user";
 import { WikiSidebar } from "@/components/wiki/wiki-sidebar";
+import { TextoComDestaque } from "@/components/wiki/wiki-destaque";
 
 export default async function WikiPaginaPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ slug: string }>;
+  searchParams: Promise<{ destaque?: string }>;
 }) {
   const { slug } = await params;
+  const { destaque } = await searchParams;
   const supabase = await createClient();
 
   const { data: paginas } = await supabase
@@ -35,7 +39,9 @@ export default async function WikiPaginaPage({
       <div className="min-w-0 flex-1">
         <article>
           <div className="mb-4 flex items-center justify-between">
-            <h1 className="text-2xl font-semibold">{pagina.titulo}</h1>
+            <h1 className="text-2xl font-semibold">
+              <TextoComDestaque texto={pagina.titulo} termo={destaque} />
+            </h1>
             {criador && (
               <div className="flex items-center gap-3">
                 {!pagina.publicada && (
@@ -53,7 +59,7 @@ export default async function WikiPaginaPage({
             )}
           </div>
           <div className="whitespace-pre-wrap text-neutral-300">
-            {pagina.conteudo}
+            <TextoComDestaque texto={pagina.conteudo} termo={destaque} />
           </div>
         </article>
       </div>

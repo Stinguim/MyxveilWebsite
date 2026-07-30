@@ -2,7 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { isCriador } from "@/lib/auth/current-user";
-import { CATEGORIA_LABEL } from "@/lib/wiki/types";
+import { CATEGORIA_LABEL, type CategoriaWiki } from "@/lib/wiki/types";
 
 export default async function AdminWikiPage() {
   if (!(await isCriador())) {
@@ -53,7 +53,7 @@ export default async function AdminWikiPage() {
                   </Link>
                 </td>
                 <td className="px-4 py-2 text-neutral-400">
-                  {CATEGORIA_LABEL[pagina.categoria]}
+                  {CATEGORIA_LABEL[pagina.categoria as CategoriaWiki]}
                 </td>
                 <td className="px-4 py-2">
                   {pagina.publicada ? (

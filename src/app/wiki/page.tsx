@@ -1,10 +1,16 @@
 import { createClient } from "@/lib/supabase/server";
 import { WikiSidebar } from "@/components/wiki/wiki-sidebar";
+import { TextoComDestaque } from "@/components/wiki/wiki-destaque";
 import { ORDEM_CATEGORIAS } from "@/lib/wiki/types";
 
 // A listagem em si já respeita a RLS (wiki_pages_select): jogadores só
 // veem "publicada = true", o CRIADOR vê tudo. Não há filtro extra aqui.
-export default async function WikiIndexPage() {
+export default async function WikiIndexPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ destaque?: string }>;
+}) {
+  const { destaque } = await searchParams;
   const supabase = await createClient();
 
   const { data: paginas } = await supabase
@@ -27,9 +33,11 @@ export default async function WikiIndexPage() {
       <div className="min-w-0 flex-1">
         {primeira ? (
           <article>
-            <h1 className="mb-4 text-2xl font-semibold">{primeira.titulo}</h1>
+            <h1 className="mb-4 text-2xl font-semibold">
+              <TextoComDestaque texto={primeira.titulo} termo={destaque} />
+            </h1>
             <div className="whitespace-pre-wrap text-neutral-300">
-              {primeira.conteudo}
+              <TextoComDestaque texto={primeira.conteudo} termo={destaque} />
             </div>
           </article>
         ) : (
