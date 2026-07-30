@@ -72,6 +72,11 @@ export default async function AdminPage() {
           descricao="Criar, editar e publicar páginas da wiki."
         />
         <CartaoAdmin
+          href="/admin/guia"
+          titulo="Guia de regras"
+          descricao="Criar, editar e publicar páginas do guia de regras."
+        />
+        <CartaoAdmin
           href="/admin/mapa"
           titulo="Mapa de relações"
           descricao="Gerir ligações entre personagens e grupos/facções."

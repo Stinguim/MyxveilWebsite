@@ -24,6 +24,9 @@ export async function Navbar() {
               <Link href="/wiki" className="text-muted hover:text-veil-amber-soft">
                 Wiki
               </Link>
+              <Link href="/guia" className="text-muted hover:text-veil-amber-soft">
+                Guia
+              </Link>
               {current.profile.role === "criador" && (
                 <Link
                   href="/admin"
