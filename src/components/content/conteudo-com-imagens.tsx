@@ -46,14 +46,20 @@ export function ConteudoComImagens({
           const texto = renderTexto ? renderTexto(bloco.valor) : bloco.valor;
           if (bloco.nivel === 1) {
             return (
-              <h2 key={index} className="text-xl font-semibold text-neutral-100">
+              <h2
+                key={index}
+                className="-mb-2 text-xl font-semibold text-neutral-100"
+              >
                 {texto}
               </h2>
             );
           }
           if (bloco.nivel === 2) {
             return (
-              <h3 key={index} className="text-lg font-semibold text-neutral-100">
+              <h3
+                key={index}
+                className="-mb-2 text-lg font-semibold text-neutral-100"
+              >
                 {texto}
               </h3>
             );
@@ -61,7 +67,7 @@ export function ConteudoComImagens({
           return (
             <h4
               key={index}
-              className="-mt-2 text-base font-semibold text-neutral-200"
+              className="-mb-2 text-base font-semibold text-neutral-200"
             >
               {texto}
             </h4>
