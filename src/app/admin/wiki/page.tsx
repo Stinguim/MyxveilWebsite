@@ -2,7 +2,6 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { isCriador } from "@/lib/auth/current-user";
-import { CATEGORIA_LABEL, type CategoriaWiki } from "@/lib/wiki/types";
 
 export default async function AdminWikiPage() {
   if (!(await isCriador())) {
@@ -13,20 +12,37 @@ export default async function AdminWikiPage() {
 
   const { data: paginas } = await supabase
     .from("wiki_pages")
-    .select("id, slug, titulo, categoria, publicada, ordem")
-    .order("categoria", { ascending: true })
+    .select("id, slug, titulo, publicada, ordem, categoria:wiki_categorias(nome, ordem)")
     .order("ordem", { ascending: true });
+
+  // Ordena no cliente por (categoria.ordem, página.ordem) — o Postgrest
+  // não permite ordenar por uma coluna da tabela relacionada
+  // diretamente numa única chamada .order() encadeada de forma simples.
+  const lista = [...(paginas ?? [])].sort((a, b) => {
+    const ordemCategoriaA = a.categoria?.ordem ?? 0;
+    const ordemCategoriaB = b.categoria?.ordem ?? 0;
+    if (ordemCategoriaA !== ordemCategoriaB) return ordemCategoriaA - ordemCategoriaB;
+    return a.ordem - b.ordem;
+  });
 
   return (
     <div className="mx-auto max-w-4xl px-6 py-10">
       <div className="mb-6 flex items-center justify-between">
         <h1 className="text-2xl font-semibold">Gestão da Wiki</h1>
-        <Link
-          href="/admin/wiki/nova"
-          className="rounded-md bg-neutral-100 px-3 py-1.5 text-sm text-neutral-900 hover:bg-white"
-        >
-          Nova página
-        </Link>
+        <div className="flex items-center gap-3">
+          <Link
+            href="/admin/wiki/categorias"
+            className="text-sm text-neutral-400 hover:text-white"
+          >
+            Gerir categorias
+          </Link>
+          <Link
+            href="/admin/wiki/nova"
+            className="rounded-md bg-neutral-100 px-3 py-1.5 text-sm text-neutral-900 hover:bg-white"
+          >
+            Nova página
+          </Link>
+        </div>
       </div>
 
       <div className="overflow-hidden rounded-md border border-neutral-800">
@@ -39,7 +55,7 @@ export default async function AdminWikiPage() {
             </tr>
           </thead>
           <tbody>
-            {(paginas ?? []).map((pagina) => (
+            {lista.map((pagina) => (
               <tr
                 key={pagina.id}
                 className="border-t border-neutral-800 hover:bg-neutral-900/50"
@@ -53,7 +69,7 @@ export default async function AdminWikiPage() {
                   </Link>
                 </td>
                 <td className="px-4 py-2 text-neutral-400">
-                  {CATEGORIA_LABEL[pagina.categoria as CategoriaWiki]}
+                  {pagina.categoria?.nome ?? "—"}
                 </td>
                 <td className="px-4 py-2">
                   {pagina.publicada ? (
@@ -64,7 +80,7 @@ export default async function AdminWikiPage() {
                 </td>
               </tr>
             ))}
-            {(paginas ?? []).length === 0 && (
+            {lista.length === 0 && (
               <tr>
                 <td colSpan={3} className="px-4 py-6 text-center text-neutral-500">
                   Ainda não há páginas. Cria a primeira.

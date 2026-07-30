@@ -17,12 +17,16 @@ export default async function WikiPaginaPage({
   const { destaque } = await searchParams;
   const supabase = await createClient();
 
-  const { data: paginas } = await supabase
-    .from("wiki_pages")
-    .select("id, slug, titulo, categoria, conteudo, publicada")
-    .order("ordem", { ascending: true });
+  const [{ data: paginas }, { data: categorias }] = await Promise.all([
+    supabase
+      .from("wiki_pages")
+      .select("id, slug, titulo, categoria_id, conteudo, publicada, ordem")
+      .order("ordem", { ascending: true }),
+    supabase.from("wiki_categorias").select("*").order("ordem", { ascending: true }),
+  ]);
 
   const lista = paginas ?? [];
+  const listaCategorias = categorias ?? [];
   const pagina = lista.find((p) => p.slug === slug);
 
   // RLS já impede o select de devolver rascunhos a não-CRIADOR, mas a
@@ -35,7 +39,7 @@ export default async function WikiPaginaPage({
 
   return (
     <div className="mx-auto flex max-w-4xl gap-8 px-6 py-10">
-      <WikiSidebar paginas={lista} slugAtual={pagina.slug} />
+      <WikiSidebar paginas={lista} categorias={listaCategorias} slugAtual={pagina.slug} />
 
       <div className="min-w-0 flex-1">
         <article>

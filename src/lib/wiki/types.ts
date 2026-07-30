@@ -1,33 +1,19 @@
-export type CategoriaWiki =
-  | "historia_do_mundo"
-  | "storyline_principal"
-  | "grupos_faccoes"
-  | "designacoes_paranormal"
-  | "regras_da_mesa"
-  | "outro";
+// Categoria deixou de ser um enum fixo (migration 0021) — agora é uma
+// referência dinâmica a wiki_categorias, gerida pelo CRIADOR em
+// /admin/wiki/categorias. Mesmo padrão já usado para Group em
+// lib/relations/types.ts.
 
-export const CATEGORIAS_WIKI: [CategoriaWiki, string][] = [
-  ["historia_do_mundo", "História do Mundo"],
-  ["storyline_principal", "Storyline Principal"],
-  ["grupos_faccoes", "Grupos e Facções"],
-  ["designacoes_paranormal", "Designações do Paranormal"],
-  ["regras_da_mesa", "Regras da Mesa"],
-  ["outro", "Outro"],
-];
-
-export const CATEGORIA_LABEL: Record<CategoriaWiki, string> = Object.fromEntries(
-  CATEGORIAS_WIKI
-) as Record<CategoriaWiki, string>;
-
-// Ordem de apresentação das categorias na sidebar — segue a ordem da spec
-// (secção 6), com "Outro" sempre por último.
-export const ORDEM_CATEGORIAS: CategoriaWiki[] = CATEGORIAS_WIKI.map(
-  ([valor]) => valor
-);
+export type WikiCategoria = {
+  id: string;
+  nome: string;
+  ordem: number;
+  created_at: string;
+  updated_at: string;
+};
 
 export type WikiPage = {
   id: string;
-  categoria: CategoriaWiki;
+  categoria_id: string;
   slug: string;
   titulo: string;
   conteudo: string;

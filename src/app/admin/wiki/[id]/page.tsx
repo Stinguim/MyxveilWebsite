@@ -16,11 +16,10 @@ export default async function EditarPaginaWikiPage({
   const { id } = await params;
   const supabase = await createClient();
 
-  const { data: pagina } = await supabase
-    .from("wiki_pages")
-    .select("*")
-    .eq("id", id)
-    .maybeSingle();
+  const [{ data: pagina }, { data: categorias }] = await Promise.all([
+    supabase.from("wiki_pages").select("*").eq("id", id).maybeSingle(),
+    supabase.from("wiki_categorias").select("*").order("ordem", { ascending: true }),
+  ]);
 
   if (!pagina) {
     notFound();
@@ -37,7 +36,7 @@ export default async function EditarPaginaWikiPage({
           Ver página publicada
         </Link>
       </div>
-      <FormPaginaWiki pagina={pagina} />
+      <FormPaginaWiki pagina={pagina} categorias={categorias ?? []} />
     </div>
   );
 }

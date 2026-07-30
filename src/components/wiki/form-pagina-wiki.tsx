@@ -1,30 +1,39 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState } from "react";
-import {
-  Campo,
-  CampoTexto,
-  CampoTextarea,
-  CampoSelect,
-} from "@/components/campos";
+import { useRef, useState } from "react";
+import { Campo, CampoTexto } from "@/components/campos";
 import { SubmitButton } from "@/components/submit-button";
 import {
   criarPaginaWiki,
   atualizarPaginaWiki,
   apagarPaginaWiki,
 } from "@/lib/wiki/actions";
-import { CATEGORIAS_WIKI, gerarSlug, type WikiPage } from "@/lib/wiki/types";
+import { gerarSlug, type WikiCategoria, type WikiPage } from "@/lib/wiki/types";
+import { UploadImagemConteudo } from "@/components/content/upload-imagem-conteudo";
+import { InserirTituloConteudo } from "@/components/content/inserir-titulo-conteudo";
 
 // group_id fica de fora do formulário (secção 5/6: ligação a "super-nós"
 // do mapa de relações) até essa UI existir — o schema já suporta, o
 // formulário pode ganhar o select assim que /admin/grupos existir.
 
-export function FormPaginaWiki({ pagina }: { pagina?: WikiPage }) {
+const inputClass =
+  "mt-1 w-full rounded-md border border-neutral-700 bg-neutral-900 px-3 py-2 text-sm outline-none focus:border-neutral-400";
+
+export function FormPaginaWiki({
+  pagina,
+  categorias,
+}: {
+  pagina?: WikiPage;
+  categorias: WikiCategoria[];
+}) {
   const router = useRouter();
   const [erro, setErro] = useState<string | null>(null);
   const [titulo, setTitulo] = useState(pagina?.titulo ?? "");
   const [slugTocado, setSlugTocado] = useState(Boolean(pagina));
+  const conteudoRef = useRef<HTMLTextAreaElement>(null);
+
+  const categoriasOrdenadas = [...categorias].sort((a, b) => a.ordem - b.ordem);
 
   async function onSubmit(formData: FormData) {
     setErro(null);
@@ -86,19 +95,43 @@ export function FormPaginaWiki({ pagina }: { pagina?: WikiPage }) {
         />
       </Campo>
 
-      <Campo label="Categoria">
-        <CampoSelect
-          name="categoria"
-          defaultValue={pagina?.categoria}
-          options={CATEGORIAS_WIKI}
-        />
+      <Campo
+        label="Categoria"
+        hint={
+          categoriasOrdenadas.length === 0
+            ? "Ainda não há categorias. Cria uma em /admin/wiki/categorias antes de continuar."
+            : undefined
+        }
+      >
+        <select
+          name="categoria_id"
+          defaultValue={pagina?.categoria_id ?? ""}
+          className={inputClass}
+        >
+          <option value="">— Seleciona —</option>
+          {categoriasOrdenadas.map((categoria) => (
+            <option key={categoria.id} value={categoria.id}>
+              {categoria.nome}
+            </option>
+          ))}
+        </select>
       </Campo>
 
       <Campo
         label="Conteúdo"
         hint="Partes ainda por revelar aos jogadores: deixa a página como rascunho (não publicada) em vez de escrever versões incompletas do texto."
       >
-        <CampoTextarea name="conteudo" defaultValue={pagina?.conteudo} rows={16} />
+        <div className="mb-2 flex flex-wrap items-center gap-3">
+          <InserirTituloConteudo textareaRef={conteudoRef} />
+          <UploadImagemConteudo origem="wiki" textareaRef={conteudoRef} />
+        </div>
+        <textarea
+          ref={conteudoRef}
+          name="conteudo"
+          defaultValue={pagina?.conteudo ?? ""}
+          rows={16}
+          className={inputClass}
+        />
       </Campo>
 
       <Campo

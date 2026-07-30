@@ -2,31 +2,36 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
-import {
-  CATEGORIA_LABEL,
-  ORDEM_CATEGORIAS,
-  type WikiPage,
-} from "@/lib/wiki/types";
+import type { WikiCategoria, WikiPage } from "@/lib/wiki/types";
 import { contarOcorrencias } from "@/components/wiki/wiki-destaque";
 
 type PaginaPesquisavel = Pick<
   WikiPage,
-  "slug" | "titulo" | "categoria" | "conteudo"
+  "slug" | "titulo" | "categoria_id" | "conteudo"
 >;
 
 export function WikiSidebar({
   paginas,
+  categorias,
   slugAtual,
 }: {
   paginas: PaginaPesquisavel[];
+  categorias: WikiCategoria[];
   slugAtual?: string;
 }) {
   const [termo, setTermo] = useState("");
 
-  const porCategoria = ORDEM_CATEGORIAS.map((categoria) => ({
-    categoria,
-    paginas: paginas.filter((p) => p.categoria === categoria),
-  })).filter((grupo) => grupo.paginas.length > 0);
+  const categoriasOrdenadas = useMemo(
+    () => [...categorias].sort((a, b) => a.ordem - b.ordem),
+    [categorias]
+  );
+
+  const porCategoria = categoriasOrdenadas
+    .map((categoria) => ({
+      categoria,
+      paginas: paginas.filter((p) => p.categoria_id === categoria.id),
+    }))
+    .filter((grupo) => grupo.paginas.length > 0);
 
   const resultados = useMemo(() => {
     if (!termo.trim()) return [];
@@ -92,9 +97,9 @@ export function WikiSidebar({
         </div>
       ) : (
         porCategoria.map(({ categoria, paginas: paginasDaCategoria }) => (
-          <div key={categoria}>
+          <div key={categoria.id}>
             <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-neutral-500">
-              {CATEGORIA_LABEL[categoria]}
+              {categoria.nome}
             </h3>
             <ul className="space-y-1">
               {paginasDaCategoria.map((pagina) => (
