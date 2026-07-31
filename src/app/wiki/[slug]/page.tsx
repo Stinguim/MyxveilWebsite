@@ -5,6 +5,8 @@ import { isCriador } from "@/lib/auth/current-user";
 import { WikiSidebar } from "@/components/wiki/wiki-sidebar";
 import { TextoComDestaque } from "@/components/wiki/wiki-destaque";
 import { ConteudoComImagens } from "@/components/content/conteudo-com-imagens";
+import { AudioWiki } from "@/components/wiki/audio-wiki";
+import { urlAudioWiki } from "@/lib/wiki/audio-url";
 
 export default async function WikiPaginaPage({
   params,
@@ -20,7 +22,7 @@ export default async function WikiPaginaPage({
   const [{ data: paginas }, { data: categorias }] = await Promise.all([
     supabase
       .from("wiki_pages")
-      .select("id, slug, titulo, categoria_id, conteudo, publicada, ordem")
+      .select("id, slug, titulo, categoria_id, conteudo, publicada, audio_path, ordem")
       .order("ordem", { ascending: true }),
     supabase.from("wiki_categorias").select("*").order("ordem", { ascending: true }),
   ]);
@@ -36,6 +38,7 @@ export default async function WikiPaginaPage({
   }
 
   const criador = await isCriador();
+  const audioUrl = await urlAudioWiki(pagina.audio_path);
 
   return (
     <div className="mx-auto flex max-w-4xl gap-8 px-6 py-10">
@@ -63,6 +66,7 @@ export default async function WikiPaginaPage({
               </div>
             )}
           </div>
+          <AudioWiki paginaId={pagina.id} audioUrl={audioUrl} />
           <ConteudoComImagens
             conteudo={pagina.conteudo}
             renderTexto={(texto) => (

@@ -3,6 +3,7 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { isCriador } from "@/lib/auth/current-user";
 import { FormPaginaWiki } from "@/components/wiki/form-pagina-wiki";
+import { urlAudioWiki } from "@/lib/wiki/audio-url";
 
 export default async function EditarPaginaWikiPage({
   params,
@@ -25,6 +26,8 @@ export default async function EditarPaginaWikiPage({
     notFound();
   }
 
+  const audioUrl = await urlAudioWiki(pagina.audio_path);
+
   return (
     <div className="mx-auto max-w-2xl px-6 py-10">
       <div className="mb-6 flex items-center justify-between">
@@ -36,7 +39,7 @@ export default async function EditarPaginaWikiPage({
           Ver página publicada
         </Link>
       </div>
-      <FormPaginaWiki pagina={pagina} categorias={categorias ?? []} />
+      <FormPaginaWiki pagina={pagina} categorias={categorias ?? []} audioUrl={audioUrl} />
     </div>
   );
 }

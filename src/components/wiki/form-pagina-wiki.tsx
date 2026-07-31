@@ -12,6 +12,7 @@ import {
 import { gerarSlug, type WikiCategoria, type WikiPage } from "@/lib/wiki/types";
 import { UploadImagemConteudo } from "@/components/content/upload-imagem-conteudo";
 import { InserirTituloConteudo } from "@/components/content/inserir-titulo-conteudo";
+import { AudioWiki } from "@/components/wiki/audio-wiki";
 
 // group_id fica de fora do formulário (secção 5/6: ligação a "super-nós"
 // do mapa de relações) até essa UI existir — o schema já suporta, o
@@ -23,9 +24,11 @@ const inputClass =
 export function FormPaginaWiki({
   pagina,
   categorias,
+  audioUrl,
 }: {
   pagina?: WikiPage;
   categorias: WikiCategoria[];
+  audioUrl?: string | null;
 }) {
   const router = useRouter();
   const [erro, setErro] = useState<string | null>(null);
@@ -94,6 +97,15 @@ export function FormPaginaWiki({
           placeholder={!slugTocado ? gerarSlug(titulo) : undefined}
         />
       </Campo>
+
+      {pagina && (
+        <Campo
+          label="Áudio da página"
+          hint="Leitura em voz alta desta página, mostrada no topo (abaixo do título) em /wiki. Só é possível adicionar depois de a página existir."
+        >
+          <AudioWiki paginaId={pagina.id} audioUrl={audioUrl ?? null} podeEditar />
+        </Campo>
+      )}
 
       <Campo
         label="Categoria"

@@ -19,6 +19,7 @@ export type WikiPage = {
   conteudo: string;
   publicada: boolean;
   group_id: string | null;
+  audio_path: string | null;
   ordem: number;
   created_at: string;
   updated_at: string;

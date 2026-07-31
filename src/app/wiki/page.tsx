@@ -2,6 +2,8 @@ import { createClient } from "@/lib/supabase/server";
 import { WikiSidebar } from "@/components/wiki/wiki-sidebar";
 import { TextoComDestaque } from "@/components/wiki/wiki-destaque";
 import { ConteudoComImagens } from "@/components/content/conteudo-com-imagens";
+import { AudioWiki } from "@/components/wiki/audio-wiki";
+import { urlAudioWiki } from "@/lib/wiki/audio-url";
 
 // A listagem em si já respeita a RLS (wiki_pages_select): jogadores só
 // veem "publicada = true", o CRIADOR vê tudo. Não há filtro extra aqui.
@@ -20,7 +22,7 @@ export default async function WikiIndexPage({
   const [{ data: paginas }, { data: categorias }] = await Promise.all([
     supabase
       .from("wiki_pages")
-      .select("slug, titulo, categoria_id, conteudo, publicada, ordem")
+      .select("id, slug, titulo, categoria_id, conteudo, publicada, audio_path, ordem")
       .order("ordem", { ascending: true }),
     supabase.from("wiki_categorias").select("*").order("ordem", { ascending: true }),
   ]);
@@ -38,6 +40,8 @@ export default async function WikiIndexPage({
     return a.ordem - b.ordem;
   })[0];
 
+  const audioUrl = primeira ? await urlAudioWiki(primeira.audio_path) : null;
+
   return (
     <div className="mx-auto flex max-w-4xl gap-8 px-6 py-10">
       <WikiSidebar paginas={lista} categorias={listaCategorias} slugAtual={primeira?.slug} />
@@ -48,6 +52,7 @@ export default async function WikiIndexPage({
             <h1 className="mb-4 text-2xl font-semibold">
               <TextoComDestaque texto={primeira.titulo} termo={destaque} />
             </h1>
+            <AudioWiki paginaId={primeira.id} audioUrl={audioUrl} />
             <ConteudoComImagens
               conteudo={primeira.conteudo}
               renderTexto={(texto) => (
