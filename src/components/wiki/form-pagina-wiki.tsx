@@ -2,18 +2,14 @@
 
 import { useRouter } from "next/navigation";
 import { useRef, useState } from "react";
-import {
-  Campo,
-  CampoTexto,
-  CampoSelect,
-} from "@/components/campos";
+import { Campo, CampoTexto } from "@/components/campos";
 import { SubmitButton } from "@/components/submit-button";
 import {
   criarPaginaWiki,
   atualizarPaginaWiki,
   apagarPaginaWiki,
 } from "@/lib/wiki/actions";
-import { CATEGORIAS_WIKI, gerarSlug, type WikiPage } from "@/lib/wiki/types";
+import { gerarSlug, type WikiCategoria, type WikiPage } from "@/lib/wiki/types";
 import { UploadImagemConteudo } from "@/components/content/upload-imagem-conteudo";
 import { InserirTituloConteudo } from "@/components/content/inserir-titulo-conteudo";
 
@@ -21,15 +17,23 @@ import { InserirTituloConteudo } from "@/components/content/inserir-titulo-conte
 // do mapa de relações) até essa UI existir — o schema já suporta, o
 // formulário pode ganhar o select assim que /admin/grupos existir.
 
-const textareaClass =
+const inputClass =
   "mt-1 w-full rounded-md border border-neutral-700 bg-neutral-900 px-3 py-2 text-sm outline-none focus:border-neutral-400";
 
-export function FormPaginaWiki({ pagina }: { pagina?: WikiPage }) {
+export function FormPaginaWiki({
+  pagina,
+  categorias,
+}: {
+  pagina?: WikiPage;
+  categorias: WikiCategoria[];
+}) {
   const router = useRouter();
   const [erro, setErro] = useState<string | null>(null);
   const [titulo, setTitulo] = useState(pagina?.titulo ?? "");
   const [slugTocado, setSlugTocado] = useState(Boolean(pagina));
   const conteudoRef = useRef<HTMLTextAreaElement>(null);
+
+  const categoriasOrdenadas = [...categorias].sort((a, b) => a.ordem - b.ordem);
 
   async function onSubmit(formData: FormData) {
     setErro(null);
@@ -91,12 +95,26 @@ export function FormPaginaWiki({ pagina }: { pagina?: WikiPage }) {
         />
       </Campo>
 
-      <Campo label="Categoria">
-        <CampoSelect
-          name="categoria"
-          defaultValue={pagina?.categoria}
-          options={CATEGORIAS_WIKI}
-        />
+      <Campo
+        label="Categoria"
+        hint={
+          categoriasOrdenadas.length === 0
+            ? "Ainda não há categorias. Cria uma em /admin/wiki/categorias antes de continuar."
+            : undefined
+        }
+      >
+        <select
+          name="categoria_id"
+          defaultValue={pagina?.categoria_id ?? ""}
+          className={inputClass}
+        >
+          <option value="">— Seleciona —</option>
+          {categoriasOrdenadas.map((categoria) => (
+            <option key={categoria.id} value={categoria.id}>
+              {categoria.nome}
+            </option>
+          ))}
+        </select>
       </Campo>
 
       <Campo
@@ -112,7 +130,7 @@ export function FormPaginaWiki({ pagina }: { pagina?: WikiPage }) {
           name="conteudo"
           defaultValue={pagina?.conteudo ?? ""}
           rows={16}
-          className={textareaClass}
+          className={inputClass}
         />
       </Campo>
 
