@@ -13,22 +13,27 @@ export default async function WikiIndexPage({
   const { destaque } = await searchParams;
   const supabase = await createClient();
 
+  // Categorias e páginas buscadas em separado (ver nota em
+  // admin/wiki/page.tsx) — evita depender do tipo inferido para um join
+  // aninhado categoria:wiki_categorias(...), que sem tipos gerados da
+  // Database o Postgrest tipa como array em vez de objeto único.
   const [{ data: paginas }, { data: categorias }] = await Promise.all([
     supabase
       .from("wiki_pages")
-      .select("slug, titulo, categoria_id, conteudo, publicada, ordem, categoria:wiki_categorias(ordem)")
+      .select("slug, titulo, categoria_id, conteudo, publicada, ordem")
       .order("ordem", { ascending: true }),
     supabase.from("wiki_categorias").select("*").order("ordem", { ascending: true }),
   ]);
 
   const lista = paginas ?? [];
   const listaCategorias = categorias ?? [];
+  const categoriaPorId = new Map(listaCategorias.map((c) => [c.id, c]));
 
   // Primeira página pela ordem das categorias, depois por "ordem" dentro
   // da categoria — para dar um ponto de entrada óbvio.
   const primeira = [...lista].sort((a, b) => {
-    const ordemCategoriaA = a.categoria?.ordem ?? 0;
-    const ordemCategoriaB = b.categoria?.ordem ?? 0;
+    const ordemCategoriaA = categoriaPorId.get(a.categoria_id)?.ordem ?? 0;
+    const ordemCategoriaB = categoriaPorId.get(b.categoria_id)?.ordem ?? 0;
     if (ordemCategoriaA !== ordemCategoriaB) return ordemCategoriaA - ordemCategoriaB;
     return a.ordem - b.ordem;
   })[0];

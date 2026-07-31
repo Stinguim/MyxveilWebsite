@@ -10,17 +10,28 @@ export default async function AdminWikiPage() {
 
   const supabase = await createClient();
 
-  const { data: paginas } = await supabase
-    .from("wiki_pages")
-    .select("id, slug, titulo, publicada, ordem, categoria:wiki_categorias(nome, ordem)")
-    .order("ordem", { ascending: true });
+  // Categorias e páginas buscadas em separado (em vez de um join
+  // aninhado categoria:wiki_categorias(...)) — o tipo que o Postgrest
+  // devolve para joins aninhados depende de tipos gerados da Database
+  // que este projeto não usa, e nesse caso o cliente infere um array
+  // em vez de objeto único, mesmo sendo uma FK "to-one". Fazer o join
+  // manualmente em JS evita essa ambiguidade de tipos.
+  const [{ data: paginas }, { data: categorias }] = await Promise.all([
+    supabase
+      .from("wiki_pages")
+      .select("id, slug, titulo, publicada, ordem, categoria_id")
+      .order("ordem", { ascending: true }),
+    supabase.from("wiki_categorias").select("id, nome, ordem"),
+  ]);
 
-  // Ordena no cliente por (categoria.ordem, página.ordem) — o Postgrest
-  // não permite ordenar por uma coluna da tabela relacionada
-  // diretamente numa única chamada .order() encadeada de forma simples.
+  const categoriaPorId = new Map(
+    (categorias ?? []).map((c) => [c.id, c])
+  );
+
+  // Ordena por (categoria.ordem, página.ordem).
   const lista = [...(paginas ?? [])].sort((a, b) => {
-    const ordemCategoriaA = a.categoria?.ordem ?? 0;
-    const ordemCategoriaB = b.categoria?.ordem ?? 0;
+    const ordemCategoriaA = categoriaPorId.get(a.categoria_id)?.ordem ?? 0;
+    const ordemCategoriaB = categoriaPorId.get(b.categoria_id)?.ordem ?? 0;
     if (ordemCategoriaA !== ordemCategoriaB) return ordemCategoriaA - ordemCategoriaB;
     return a.ordem - b.ordem;
   });
@@ -69,7 +80,7 @@ export default async function AdminWikiPage() {
                   </Link>
                 </td>
                 <td className="px-4 py-2 text-neutral-400">
-                  {pagina.categoria?.nome ?? "—"}
+                  {categoriaPorId.get(pagina.categoria_id)?.nome ?? "—"}
                 </td>
                 <td className="px-4 py-2">
                   {pagina.publicada ? (
