@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { criarRelacao, criarGrupo } from "@/lib/relations/actions";
-import { TIPO_RELACAO_OPCOES, type TipoRelacao } from "@/lib/relations/types";
+import { TIPO_RELACAO_COR, TIPO_RELACAO_OPCOES, type TipoRelacao } from "@/lib/relations/types";
 import type { PersonagemDoGrafo } from "@/components/mapa/grafo-relacoes";
 import type { Group } from "@/lib/relations/types";
 
@@ -21,6 +21,7 @@ export function FormNovaRelacao({ personagens, grupos, onCriada }: Props) {
   const [alvoId, setAlvoId] = useState("");
   const [tipo, setTipo] = useState<TipoRelacao>("aliado");
   const [tipoOutro, setTipoOutro] = useState("");
+  const [cor, setCor] = useState(TIPO_RELACAO_COR.outro);
   const [descricao, setDescricao] = useState("");
 
   async function onSubmit(e: React.FormEvent) {
@@ -39,6 +40,7 @@ export function FormNovaRelacao({ personagens, grupos, onCriada }: Props) {
       groupBId: alvoTipo === "grupo" ? alvoId : undefined,
       tipo,
       tipoOutro,
+      cor: tipo === "outro" ? cor : undefined,
       descricao,
     });
     setAEnviar(false);
@@ -52,6 +54,7 @@ export function FormNovaRelacao({ personagens, grupos, onCriada }: Props) {
     setAlvoId("");
     setDescricao("");
     setTipoOutro("");
+    setCor(TIPO_RELACAO_COR.outro);
     onCriada();
   }
 
@@ -130,15 +133,30 @@ export function FormNovaRelacao({ personagens, grupos, onCriada }: Props) {
         </div>
 
         {tipo === "outro" && (
-          <div>
-            <label className="block text-xs text-neutral-500">Descreve o tipo</label>
-            <input
-              type="text"
-              value={tipoOutro}
-              onChange={(e) => setTipoOutro(e.target.value)}
-              className="mt-1 w-full rounded-md border border-neutral-700 bg-neutral-900 px-2 py-1.5 text-sm"
-            />
-          </div>
+          <>
+            <div>
+              <label className="block text-xs text-neutral-500">Descreve o tipo</label>
+              <input
+                type="text"
+                value={tipoOutro}
+                onChange={(e) => setTipoOutro(e.target.value)}
+                className="mt-1 w-full rounded-md border border-neutral-700 bg-neutral-900 px-2 py-1.5 text-sm"
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs text-neutral-500">Cor da linha</label>
+              <div className="mt-1 flex items-center gap-2">
+                <input
+                  type="color"
+                  value={cor}
+                  onChange={(e) => setCor(e.target.value)}
+                  className="h-9 w-14 cursor-pointer rounded-md border border-neutral-700 bg-neutral-900 p-1"
+                />
+                <span className="text-xs text-neutral-500">{cor}</span>
+              </div>
+            </div>
+          </>
         )}
       </div>
 

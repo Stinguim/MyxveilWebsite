@@ -13,9 +13,9 @@ import {
 } from "reactflow";
 import "reactflow/dist/style.css";
 import {
+  corDaRelacao,
   idNoGrupo,
   idNoPersonagem,
-  TIPO_RELACAO_COR,
   TIPO_RELACAO_LABEL,
   type CharacterRelation,
   type Group,
@@ -161,18 +161,20 @@ export function GrafoRelacoes({
             ? relacao.tipo_outro
             : TIPO_RELACAO_LABEL[relacao.tipo];
 
+        const cor = corDaRelacao(relacao);
+
         return {
           id: relacao.id,
           source,
           target,
           label,
           animated: relacao.tipo === "romance",
-          style: { stroke: TIPO_RELACAO_COR[relacao.tipo] },
+          style: { stroke: cor },
           labelStyle: { fill: "#e5e5e5", fontSize: 11 },
           labelBgStyle: { fill: "#171717" },
           markerEnd: {
             type: MarkerType.ArrowClosed,
-            color: TIPO_RELACAO_COR[relacao.tipo],
+            color: cor,
           },
         } satisfies Edge;
       }),

@@ -50,6 +50,8 @@ export async function criarGrupo(
 // Relações (arestas)
 // ----------------------------------------------------------------------------
 
+const REGEX_COR_HEX = /^#[0-9a-fA-F]{6}$/;
+
 type CriarRelacaoInput = {
   characterAId: string;
   /** Exatamente um dos dois tem de vir preenchido. */
@@ -57,6 +59,8 @@ type CriarRelacaoInput = {
   groupBId?: string;
   tipo: TipoRelacao;
   tipoOutro?: string;
+  /** Cor customizada (hex #RRGGBB), só aplicada quando tipo = "outro". */
+  cor?: string;
   descricao?: string;
 };
 
@@ -79,6 +83,9 @@ export async function criarRelacao(
   if (input.tipo === "outro" && !input.tipoOutro?.trim()) {
     return { error: "Descreve o tipo de relação em 'Outro'." };
   }
+  if (input.cor && !REGEX_COR_HEX.test(input.cor)) {
+    return { error: "Cor inválida." };
+  }
 
   const supabase = await createClient();
 
@@ -97,6 +104,10 @@ export async function criarRelacao(
       group_b_id: input.groupBId ?? null,
       tipo: input.tipo,
       tipo_outro: input.tipo === "outro" ? input.tipoOutro?.trim() : null,
+      // Cor só faz sentido para "outro" — para os restantes tipos a cor
+      // é sempre a fixa (TIPO_RELACAO_COR), por isso gravamos null
+      // mesmo que o formulário envie algo por engano.
+      cor: input.tipo === "outro" ? input.cor || null : null,
       descricao: input.descricao?.trim() || null,
       created_by: userData.user.id,
     })

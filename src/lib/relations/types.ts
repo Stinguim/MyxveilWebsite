@@ -23,6 +23,9 @@ export const TIPO_RELACAO_LABEL: Record<TipoRelacao, string> = Object.fromEntrie
 
 // Cor da aresta no grafo, por tipo de relação — só para leitura mais
 // rápida do mapa (aliado=verde, inimigo/rival=vermelho/laranja, etc).
+// Usada como fallback quando a relação não tem cor própria (ver
+// corDaRelacao) — o que é sempre o caso, exceto para "outro" com uma
+// cor escolhida explicitamente (migration 0023).
 export const TIPO_RELACAO_COR: Record<TipoRelacao, string> = {
   aliado: "#4ade80",
   inimigo: "#f87171",
@@ -48,11 +51,26 @@ export type CharacterRelation = {
   group_b_id: string | null;
   tipo: TipoRelacao;
   tipo_outro: string | null;
+  /** Cor customizada (hex #RRGGBB), só usada quando tipo = "outro" (migration 0023). */
+  cor: string | null;
   descricao: string | null;
   created_by: string;
   created_at: string;
   updated_at: string;
 };
+
+/**
+ * Cor efetiva a usar para desenhar a aresta desta relação no grafo.
+ * Só "outro" pode ter cor própria por relação — os restantes tipos
+ * usam sempre a cor fixa de TIPO_RELACAO_COR, por decisão do CRIADOR
+ * (manter a legibilidade rápida "vermelho = inimigo" em todo o mapa).
+ */
+export function corDaRelacao(relacao: Pick<CharacterRelation, "tipo" | "cor">): string {
+  if (relacao.tipo === "outro" && relacao.cor) {
+    return relacao.cor;
+  }
+  return TIPO_RELACAO_COR[relacao.tipo];
+}
 
 // Nó simplificado para o grafo — tanto characters como groups viram nós,
 // distinguidos por `tipo`.
