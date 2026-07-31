@@ -188,11 +188,18 @@ export async function criarFicha(formData: FormData): Promise<ActionResult> {
   // tentasse forçar o campo via um pedido manual.
   const isCriador = current.profile.role === "criador";
 
+  // Rola o 1d6 do HP explicitamente no momento da criação (secção 4.6 da
+  // spec), em vez de depender do DEFAULT da coluna (4, um valor médio
+  // fixo) — cada ficha nova passa a ter mesmo um resultado de dado
+  // diferente, não sempre o mesmo número.
+  const hpDado1d6 = Math.floor(Math.random() * 6) + 1;
+
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("characters")
     .insert({
       ...parsed,
+      hp_dado_1d6: hpDado1d6,
       owner_id: current.user.id,
       ...(isCriador ? { estado: "aprovada" as const } : {}),
     })
